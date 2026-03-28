@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+/* ============================================
+   Design System — Review Generator
+   Default: burghardt.studio Branding
+   Per-Client Override via CSS Custom Properties auf <body>
+   ============================================ */
+:root {
+  /* Hintergründe */
+  --color-bg: #0a0a0a;
+  --color-bg-elevated: #141414;
+  --color-bg-card: #1a1a1a;
+
+  /* Text */
+  --color-text: #f0ede8;
+  --color-text-muted: #888480;
+  --color-text-subtle: #555250;
+
+  /* Akzente */
+  --color-accent: #c8a98a;
+  --color-accent-light: #d4b89a;
+  --color-accent-dark: #a8896a;
+
+  /* Sterne */
+  --color-star: #f5c518;
+  --color-star-empty: #333333;
+
+  /* Status */
+  --color-success: #28c840;
+
+  /* Tags */
+  --color-tag-positive: rgba(200, 169, 138, 0.15);
+  --color-tag-neutral: rgba(136, 132, 128, 0.15);
+  --color-tag-negative: rgba(220, 80, 60, 0.15);
+
+  /* Transitions */
+  --transition-fast: 0.15s ease-out;
+  --transition-default: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-bg-elevated: var(--color-bg-elevated);
+  --color-bg-card: var(--color-bg-card);
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-subtle: var(--color-text-subtle);
+  --color-accent: var(--color-accent);
+  --color-accent-light: var(--color-accent-light);
+  --color-accent-dark: var(--color-accent-dark);
+  --color-star: var(--color-star);
+  --color-star-empty: var(--color-star-empty);
+  --color-success: var(--color-success);
+  --color-tag-positive: var(--color-tag-positive);
+  --color-tag-neutral: var(--color-tag-neutral);
+  --color-tag-negative: var(--color-tag-negative);
+
+  /* Fonts — next/font Variablen */
+  --font-display: var(--font-playfair), "Playfair Display", Georgia, serif;
+  --font-body: var(--font-inter), "Inter", system-ui, sans-serif;
+}
+
+/* ============================================
+   Base Styles
+   ============================================ */
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+}
+
+::selection {
+  background-color: var(--color-accent);
+  color: var(--color-bg);
+}
+
+/* Star rating tap target */
+.star-tap {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}

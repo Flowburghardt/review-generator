@@ -1,0 +1,37 @@
+{
+  "slug": "burghardt-studio",
+  "businessName": "burghardt.studio",
+  "ownerName": "Florian",
+  "welcomeText": "Danke, dass du dir einen Moment nimmst! Dein Feedback hilft mir, noch besser zu werden.",
+  "googleReviewUrl": "https://g.page/r/CakE3kUNoTNLEBM/review",
+  "branding": {
+    "accentColor": "#c8a98a",
+    "accentColorLight": "#d4b89a",
+    "bgColor": "#0a0a0a",
+    "textColor": "#f0ede8",
+    "logoUrl": "/logo.svg"
+  },
+  "categories": [
+    { "id": "communication", "label": "Kommunikation & Erreichbarkeit" },
+    { "id": "design-quality", "label": "Design-Qualität & Kreativität" },
+    { "id": "timeliness", "label": "Pünktlichkeit & Termintreue" },
+    { "id": "value", "label": "Preis-Leistungs-Verhältnis" },
+    { "id": "professionalism", "label": "Professionalität & Zuverlässigkeit" }
+  ],
+  "moodTags": [
+    { "label": "entspannt", "sentiment": "positive" },
+    { "label": "schnell", "sentiment": "positive" },
+    { "label": "kreativ", "sentiment": "positive" },
+    { "label": "zuverlässig", "sentiment": "positive" },
+    { "label": "überraschend gut", "sentiment": "positive" },
+    { "label": "übertrifft Erwartungen", "sentiment": "positive" },
+    { "label": "achtsam", "sentiment": "positive" },
+    { "label": "fröhlich", "sentiment": "positive" },
+    { "label": "solide", "sentiment": "neutral" },
+    { "label": "wie erwartet", "sentiment": "neutral" },
+    { "label": "verbesserungswürdig", "sentiment": "negative" },
+    { "label": "enttäuschend", "sentiment": "negative" }
+  ],
+  "aiContext": "Freelance Design-Studio für Branding, Webdesign, Fotografie und KI-Workflows in Erfurt",
+  "feedbackEmail": "hello@burghardt.studio"
+}
