@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const PROJECT_TYPES = [
@@ -12,15 +13,15 @@ export const PROJECT_TYPES = [
 ];
 
 interface ProjectTypeProps {
-  selected: string | null;
-  onChange: (type: string) => void;
+  selected: string[];
+  onToggle: (type: string) => void;
   projectName: string;
   onProjectNameChange: (name: string) => void;
 }
 
 export default function ProjectType({
   selected,
-  onChange,
+  onToggle,
   projectName,
   onProjectNameChange,
 }: ProjectTypeProps) {
@@ -33,14 +34,14 @@ export default function ProjectType({
       </div>
       <div className="flex flex-wrap gap-2">
         {PROJECT_TYPES.map((type) => {
-          const isSelected = selected === type.id;
+          const isSelected = selected.includes(type.id);
           return (
             <motion.button
               key={type.id}
               type="button"
-              onClick={() => onChange(type.id)}
+              onClick={() => onToggle(type.id)}
               className={cn(
-                "rounded-xl border px-4 py-2.5",
+                "inline-flex items-center gap-1.5 rounded-xl border px-4 py-2.5",
                 "min-h-[44px] text-base font-medium",
                 "[-webkit-tap-highlight-color:transparent]",
                 "transition-colors duration-150",
@@ -52,6 +53,15 @@ export default function ProjectType({
               whileTap={{ scale: 0.96 }}
               transition={{ type: "spring", stiffness: 500, damping: 25 }}
             >
+              {isSelected && (
+                <motion.span
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                >
+                  <Check size={16} strokeWidth={2.5} />
+                </motion.span>
+              )}
               {type.label}
             </motion.button>
           );

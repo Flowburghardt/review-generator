@@ -41,7 +41,7 @@ export default function ReviewFlow({ config }: ReviewFlowProps) {
   const [generateCount, setGenerateCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [tone, setTone] = useState("normal");
-  const [projectType, setProjectType] = useState<string | null>(null);
+  const [projectTypes, setProjectTypes] = useState<string[]>([]);
   const [projectName, setProjectName] = useState("");
 
   const allCategoriesRated = useMemo(
@@ -85,7 +85,7 @@ export default function ReviewFlow({ config }: ReviewFlowProps) {
           selectedTags,
           personalNote,
           tone,
-          projectType,
+          projectTypes,
           projectName: projectName || undefined,
         }),
       });
@@ -137,8 +137,14 @@ export default function ReviewFlow({ config }: ReviewFlowProps) {
     }
   }, [step, isLowRating]);
 
+  const handleToggleProjectType = useCallback((type: string) => {
+    setProjectTypes((prev) =>
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
+    );
+  }, []);
+
   const canProceed =
-    (step === 1 && allCategoriesRated && projectType !== null) ||
+    (step === 1 && allCategoriesRated && projectTypes.length > 0) ||
     (step === 2 && hasSelectedTags);
 
   return (
@@ -167,8 +173,8 @@ export default function ReviewFlow({ config }: ReviewFlowProps) {
               onRate={handleRate}
             />
             <ProjectType
-              selected={projectType}
-              onChange={setProjectType}
+              selected={projectTypes}
+              onToggle={handleToggleProjectType}
               projectName={projectName}
               onProjectNameChange={setProjectName}
             />

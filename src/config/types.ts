@@ -31,7 +31,7 @@ export interface GenerateRequest {
   selectedTags: string[];
   personalNote?: string;
   tone?: string;
-  projectType?: string;
+  projectTypes?: string[];
   projectName?: string;
 }
 

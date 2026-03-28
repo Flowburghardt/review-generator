@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
 
   // Project context
   const validProjectTypes = ["website", "branding", "marketing", "fotografie", "ki-workflow"];
-  const projectType = validProjectTypes.includes(body.projectType || "") ? body.projectType : null;
+  const projectTypes = (body.projectTypes || []).filter((t: string) => validProjectTypes.includes(t));
   const projectName = (body.projectName || "").slice(0, 80).trim();
 
   // Build rating description
@@ -119,8 +119,8 @@ MENSCHLICHE IMPERFEKTIONEN (subtil, nicht übertreiben):
 - Mal ein Komma weglassen oder einen Gedankenstrich statt Punkt
 - Sätze dürfen abgehackt sein: "Top Arbeit. Preis passt auch."
 - Nicht in jedem Text — nur gelegentlich, wie bei echten Google-Reviews
-${projectType ? `\nPROJEKTTYP: ${projectType}${projectName ? ` ("${projectName}")` : ""}` : ""}
-${projectType ? "Erwähne das Projekt konkret im Text (z.B. 'mein neues Logo', 'unsere Website', 'das Shooting').\n" : ""}
+${projectTypes.length > 0 ? `\nPROJEKTTYP: ${projectTypes.join(", ")}${projectName ? ` ("${projectName}")` : ""}` : ""}
+${projectTypes.length > 0 ? "Erwähne das Projekt konkret im Text (z.B. 'mein neues Logo', 'unsere Website', 'das Shooting').\n" : ""}
 BEWERTUNGEN:
 ${ratingDescription}
 
