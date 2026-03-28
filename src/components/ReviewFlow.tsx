@@ -192,10 +192,10 @@ export default function ReviewFlow({ config }: ReviewFlowProps) {
             className="flex flex-col gap-6"
           >
             <div className="flex flex-col gap-2">
-              <h2 className="font-display text-xl font-semibold text-text">
+              <h2 className="font-display text-lg font-bold text-text">
                 Was hat dir besonders gefallen?
               </h2>
-              <p className="text-base text-text-muted">
+              <p className="text-sm text-text-muted">
                 Wähle mindestens einen Begriff aus.
               </p>
             </div>
@@ -236,10 +236,10 @@ export default function ReviewFlow({ config }: ReviewFlowProps) {
             className="flex flex-col gap-5"
           >
             <div className="text-center">
-              <h2 className="font-display text-xl font-semibold text-text">
+              <h2 className="font-display text-lg font-bold text-text">
                 Bereit zum Generieren
               </h2>
-              <p className="mt-1 text-base text-text-muted">
+              <p className="mt-1 text-sm text-text-muted">
                 Wir erstellen eine persönliche Bewertung basierend auf deinem
                 Feedback.
               </p>
@@ -289,8 +289,8 @@ export default function ReviewFlow({ config }: ReviewFlowProps) {
               type="button"
               onClick={handleBack}
               className={cn(
-                "flex items-center justify-center gap-1 rounded-2xl border border-accent/30 px-5 py-4",
-                "text-lg font-medium text-text-muted",
+                "flex items-center justify-center gap-1 rounded-2xl border border-accent/30 px-4 py-3",
+                "text-base font-medium text-text-muted",
                 "[-webkit-tap-highlight-color:transparent]",
                 "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
                 "transition-colors duration-150 hover:border-accent/50"
@@ -306,8 +306,8 @@ export default function ReviewFlow({ config }: ReviewFlowProps) {
             onClick={handleNext}
             disabled={!canProceed}
             className={cn(
-              "flex flex-1 items-center justify-center gap-2 rounded-2xl bg-accent px-6 py-4",
-              "text-lg font-semibold text-bg",
+              "flex flex-1 items-center justify-center gap-2 rounded-2xl bg-accent px-5 py-3",
+              "text-base font-semibold text-bg",
               "[-webkit-tap-highlight-color:transparent]",
               "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
               "transition-opacity duration-150",
@@ -331,8 +331,8 @@ export default function ReviewFlow({ config }: ReviewFlowProps) {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
           className={cn(
-            "flex items-center justify-center gap-1 rounded-2xl border border-accent/30 px-5 py-3",
-            "text-base font-medium text-text-muted",
+            "flex items-center justify-center gap-1 rounded-2xl border border-accent/30 px-4 py-2.5",
+            "text-sm font-medium text-text-muted",
             "[-webkit-tap-highlight-color:transparent]",
             "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
             "transition-colors duration-150 hover:border-accent/50"

@@ -13,7 +13,7 @@ interface StarRatingProps {
 export default function StarRating({ label, value, onChange }: StarRatingProps) {
   return (
     <div className="flex flex-col items-center gap-2">
-      <span className="text-base font-medium text-text">{label}</span>
+      <span className="text-sm font-medium text-text">{label}</span>
       <div className="flex gap-1">
         {[1, 2, 3, 4, 5].map((star) => {
           const isActive = star <= value;
@@ -23,7 +23,7 @@ export default function StarRating({ label, value, onChange }: StarRatingProps) 
               type="button"
               className={cn(
                 "star-tap flex items-center justify-center rounded-md",
-                "min-h-[48px] min-w-[48px]",
+                "min-h-[44px] min-w-[44px]",
                 "[-webkit-tap-highlight-color:transparent]",
                 "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               )}
@@ -34,7 +34,7 @@ export default function StarRating({ label, value, onChange }: StarRatingProps) 
               aria-label={`${star} von 5 Sternen`}
             >
               <Star
-                size={36}
+                size={32}
                 className={cn(
                   "transition-colors duration-150",
                   isActive ? "text-star fill-current" : "text-star-empty"

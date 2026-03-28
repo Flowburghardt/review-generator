@@ -40,7 +40,7 @@ export default function GenerateButton({
       onClick={onClick}
       disabled={disabled || isGenerating}
       className={cn(
-        "w-full rounded-2xl bg-accent px-6 py-4 text-bg font-semibold text-lg",
+        "w-full rounded-2xl bg-accent px-6 py-3 text-bg font-semibold text-base",
         "[-webkit-tap-highlight-color:transparent]",
         "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
         "transition-opacity duration-150",

@@ -27,7 +27,7 @@ export default function PersonalNote({ value, onChange }: PersonalNoteProps) {
         placeholder="Was möchtest du noch erwähnen? (optional)"
         className={cn(
           "w-full resize-none rounded-xl border border-accent-subtle bg-bg-card px-4 py-3",
-          "font-body text-base text-text placeholder:text-text-muted",
+          "font-body text-sm text-text placeholder:text-text-muted",
           "transition-colors duration-150",
           "focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
         )}

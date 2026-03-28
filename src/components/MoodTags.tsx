@@ -32,8 +32,8 @@ export default function MoodTags({
             type="button"
             onClick={() => onToggle(tag.label)}
             className={cn(
-              "inline-flex items-center gap-2 rounded-full border px-5 py-2.5",
-              "min-h-[48px] text-base font-medium",
+              "inline-flex items-center gap-1.5 rounded-full border px-4 py-2",
+              "min-h-[44px] text-sm font-medium",
               "[-webkit-tap-highlight-color:transparent]",
               "transition-colors duration-150",
               "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",

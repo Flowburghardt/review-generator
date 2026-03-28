@@ -31,11 +31,11 @@ export default function WelcomeHeader({
           priority
         />
       ) : (
-        <h1 className="font-display text-3xl font-bold text-text">
+        <h1 className="font-display text-2xl font-bold text-text">
           {businessName}
         </h1>
       )}
-      <p className="text-text-muted font-body text-lg leading-relaxed">
+      <p className="text-text-muted font-body text-base leading-relaxed">
         {welcomeText}
       </p>
     </motion.div>

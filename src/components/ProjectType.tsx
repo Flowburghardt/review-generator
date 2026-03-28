@@ -41,8 +41,8 @@ export default function ProjectType({
               type="button"
               onClick={() => onToggle(type.id)}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-xl border px-4 py-2.5",
-                "min-h-[44px] text-base font-medium",
+                "inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2",
+                "min-h-[40px] text-sm font-medium",
                 "[-webkit-tap-highlight-color:transparent]",
                 "transition-colors duration-150",
                 "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
@@ -75,7 +75,7 @@ export default function ProjectType({
         placeholder="Projektname (optional)"
         className={cn(
           "w-full rounded-xl border border-accent/20 bg-bg-card px-4 py-3",
-          "font-body text-base text-text placeholder:text-text-subtle",
+          "font-body text-sm text-text placeholder:text-text-subtle",
           "transition-colors duration-150",
           "focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
         )}
