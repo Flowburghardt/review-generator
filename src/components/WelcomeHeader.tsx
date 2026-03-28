@@ -31,7 +31,7 @@ export default function WelcomeHeader({
           priority
         />
       ) : (
-        <h1 className="font-display text-2xl font-bold text-text">
+        <h1 className="font-display text-3xl font-bold text-text">
           {businessName}
         </h1>
       )}

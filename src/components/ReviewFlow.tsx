@@ -192,7 +192,7 @@ export default function ReviewFlow({ config }: ReviewFlowProps) {
             className="flex flex-col gap-6"
           >
             <div className="flex flex-col gap-2">
-              <h2 className="font-display text-lg font-bold text-text">
+              <h2 className="font-display text-xl font-bold text-text">
                 Was hat dir besonders gefallen?
               </h2>
               <p className="text-sm text-text-muted">
@@ -236,7 +236,7 @@ export default function ReviewFlow({ config }: ReviewFlowProps) {
             className="flex flex-col gap-5"
           >
             <div className="text-center">
-              <h2 className="font-display text-lg font-bold text-text">
+              <h2 className="font-display text-xl font-bold text-text">
                 Bereit zum Generieren
               </h2>
               <p className="mt-1 text-sm text-text-muted">

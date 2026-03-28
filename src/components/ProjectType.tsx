@@ -10,6 +10,7 @@ export const PROJECT_TYPES = [
   { id: "marketing", label: "Marketing" },
   { id: "fotografie", label: "Fotografie" },
   { id: "ki-workflow", label: "KI-Workflow" },
+  { id: "beratung", label: "Beratung" },
 ];
 
 interface ProjectTypeProps {

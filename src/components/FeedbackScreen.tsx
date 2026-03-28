@@ -29,7 +29,7 @@ export default function FeedbackScreen({
       </motion.div>
 
       <div className="flex flex-col gap-3">
-        <h2 className="font-display text-xl font-bold text-text">
+        <h2 className="font-display text-2xl font-bold text-text">
           Danke für dein ehrliches Feedback.
         </h2>
         <p className="text-text-muted font-body text-sm leading-relaxed">

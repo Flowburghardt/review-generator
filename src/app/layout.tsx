@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import { MotionConfig } from "framer-motion";
 import "./globals.css";
 
@@ -10,11 +11,13 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+const ceraPro = localFont({
+  src: [
+    { path: "./fonts/CeraPRO-Medium.ttf", weight: "500", style: "normal" },
+    { path: "./fonts/CeraPRO-Bold.ttf", weight: "700", style: "normal" },
+  ],
   display: "swap",
-  variable: "--font-playfair",
+  variable: "--font-cera-pro",
 });
 
 export const metadata: Metadata = {
@@ -35,7 +38,7 @@ export default function RootLayout({
   return (
     <html lang="de">
       <body
-        className={`${inter.variable} ${playfair.variable} antialiased`}
+        className={`${inter.variable} ${ceraPro.variable} antialiased`}
       >
         <MotionConfig reducedMotion="user">{children}</MotionConfig>
       </body>

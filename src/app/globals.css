@@ -57,7 +57,7 @@
   --color-tag-negative: var(--color-tag-negative);
 
   /* Fonts — next/font Variablen */
-  --font-display: var(--font-playfair), "Playfair Display", Georgia, serif;
+  --font-display: var(--font-cera-pro), "Cera PRO", system-ui, sans-serif;
   --font-body: var(--font-inter), "Inter", system-ui, sans-serif;
 }
 
