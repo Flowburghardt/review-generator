@@ -1,132 +1,166 @@
-# nextjs-coolify-starter
+# Review Generator — quality.burghardt.studio
 
-Privates Starter-Template für Next.js 15 Websites mit Coolify-Deployment.
+KI-gestützte Google-Review-Generierung. Kunden bewerten per Sterne + Tags, die KI generiert einen natürlich klingenden Review-Text zum Kopieren und werden direkt zu Google Reviews weitergeleitet.
 
-**Stack:** Next.js 15 · React 19 · TypeScript · Tailwind CSS v4 · Framer Motion · Docker
+**Stack:** Next.js 15 · React 19 · TypeScript · Tailwind CSS v4 · Framer Motion · Anthropic SDK (Claude Haiku 4.5)
 
----
-
-## Branches
-
-| Branch | Wann benutzen |
-|--------|--------------|
-| `main` | Standard — sauberer Starter ohne spezifische UI |
-| `unicorn` | Mit Unicorn Studio WebGL HeroSection vorinstalliert |
+**Live:** https://quality.burghardt.studio
 
 ---
 
-## Neues Projekt starten
+## Features
 
-### Schritt 1 — Klonen
-
-```bash
-# Ohne Unicorn Studio
-git clone --branch main https://github.com/Flowburghardt/nextjs-coolify-starter.git mein-projekt
-
-# Mit Unicorn Studio WebGL
-git clone --branch unicorn https://github.com/Flowburghardt/nextjs-coolify-starter.git mein-projekt
-
-cd mein-projekt
-```
-
-### Schritt 2 — Git-History entfernen
-
-```bash
-rm -rf .git
-git init
-git add .
-git commit -m "Initial commit"
-```
-
-### Schritt 3 — Dependencies installieren
-
-```bash
-npm install
-```
-
-Das erzeugt die `package-lock.json` — **die muss committed werden** (wichtig für Docker):
-
-```bash
-git add package-lock.json
-git commit -m "Add package-lock.json"
-```
-
-### Schritt 4 — GitHub Repo anlegen und pushen
-
-Neues (privates) Repo auf GitHub anlegen, dann:
-
-```bash
-git remote add origin https://github.com/Flowburghardt/<PROJEKTNAME>.git
-git push -u origin main
-```
-
-### Schritt 5 — Coolify Deployment einrichten
-
-1. Coolify → Neues Projekt → GitHub verbinden → Repo auswählen
-2. Branch: `main`
-3. Build Pack: **Dockerfile**
-4. Environment Variable hinzufügen: `BUILD_STANDALONE=true`
-5. Domain + SSL konfigurieren
-6. Deployen
+- **6 Tonalitäten:** Normal, Seriös, Gedicht, Songtext, Gen Z, Haiku
+- **Multi-Select Projekttypen:** Website, Branding, Marketing, Fotografie, KI-Workflow
+- **Optionaler Projektname** — wird im generierten Text erwähnt
+- **Intelligentes Routing:** < 3 Sterne Durchschnitt → Feedback-Screen (kein Google-Redirect)
+- **Copy-to-Clipboard** mit Textarea-Fallback
+- **Rate Limiting:** 10 Generierungen pro IP pro Stunde
+- **Prompt Injection Schutz**
+- **Menschliche Imperfektionen** im generierten Text
+- **DSGVO-konform:** Keine Cookies, kein Tracking, keine Datenspeicherung
 
 ---
 
-## Was nach dem Klonen anpassen
+## Multi-Tenant
 
-| Datei | Was ändern |
-|-------|-----------|
-| `package.json` | `name` → Projektname |
-| `src/app/layout.tsx` | `title`, `description`, `openGraph.url`, `lang`, `themeColor` |
-| `src/app/robots.ts` | `sitemap` URL auf echte Domain |
-| `src/app/sitemap.ts` | `BASE_URL` auf echte Domain |
-| `src/app/globals.css` | Farben in `:root` projektspezifisch anpassen |
+Ein JSON-File pro Kunde in `src/config/clients/`. Root-URL (`/`) = burghardt.studio, andere Kunden über Slug (`/lagerboxxen`, `/zucker-und-zimt`).
 
-**Nur bei `unicorn`-Branch zusätzlich:**
+### Neuen Kunden hinzufügen
 
-| Datei | Was ändern |
-|-------|-----------|
-| `src/components/HeroSection.tsx` | `UNICORN_PROJECT_ID`, E-Mail, Markenname |
-| `UnicornScene production` | `false` → `true` vor Live-Schaltung |
+**1. JSON-Config erstellen** — `src/config/clients/[slug].json`:
+
+```json
+{
+  "slug": "kundenname",
+  "businessName": "Kundenname GmbH",
+  "ownerName": "Max",
+  "welcomeText": "Danke, dass du dir einen Moment nimmst!",
+  "googleReviewUrl": "https://g.page/r/XXXXX/review",
+  "branding": {
+    "accentColor": "#c8a98a",
+    "accentColorLight": "#d4b89a",
+    "bgColor": "#0a0a0a",
+    "textColor": "#f0ede8",
+    "logoUrl": "/logos/kundenname.svg"
+  },
+  "categories": [
+    { "id": "quality", "label": "Qualität" },
+    { "id": "service", "label": "Service" },
+    { "id": "value", "label": "Preis-Leistung" }
+  ],
+  "moodTags": [
+    { "label": "freundlich", "sentiment": "positive" },
+    { "label": "schnell", "sentiment": "positive" },
+    { "label": "solide", "sentiment": "neutral" },
+    { "label": "enttäuschend", "sentiment": "negative" }
+  ],
+  "aiContext": "Beschreibung des Unternehmens für den KI-Prompt",
+  "feedbackEmail": "info@kundenname.de"
+}
+```
+
+**2. Import hinzufügen** in `src/config/index.ts`:
+
+```typescript
+import kundenname from "./clients/kundenname.json";
+
+const clients: Record<string, ClientConfig> = {
+  "burghardt-studio": burghardtStudio as ClientConfig,
+  "kundenname": kundenname as ClientConfig,
+};
+```
+
+**3. Logo** in `public/logos/` ablegen (SVG, weiß auf transparent).
+
+**4. Push** → Auto-Deploy via Coolify.
+
+---
+
+## Personalisierbare Elemente pro Kunde
+
+| Element | Config-Feld | Beispiel |
+|---------|-------------|---------|
+| Firmenname | `businessName` | "Lagerboxxen Erfurt" |
+| Inhabername | `ownerName` | "Andreas" (im Review-Text) |
+| Begrüßungstext | `welcomeText` | Persönliche Ansprache |
+| Google Review Link | `googleReviewUrl` | `https://g.page/r/XXXXX/review` |
+| Akzentfarbe | `branding.accentColor` | Kundenfarbe |
+| Logo | `branding.logoUrl` | SVG in `/public/logos/` |
+| Kategorien | `categories` | Branchenspezifisch |
+| Stimmungs-Tags | `moodTags` | Branchenspezifische Adjektive |
+| KI-Kontext | `aiContext` | Branchenbeschreibung |
+| Feedback-Email | `feedbackEmail` | Bei < 3 Sterne |
 
 ---
 
 ## Lokale Entwicklung
 
 ```bash
-npm run dev        # Dev-Server (Turbopack) — oft auf Port 3001 wenn 3000 belegt
-npm run build      # Production Build testen
-npm run type-check # TypeScript-Fehler prüfen ohne Build
+npm run dev        # Dev-Server (Turbopack)
+npm run build      # Production Build
+npm run type-check # TypeScript-Check
 npm run lint       # ESLint
 ```
 
----
+### Environment Variables
 
-## Design System anpassen
-
-Das Theme lebt komplett in `src/app/globals.css`. Tailwind v4 braucht kein `tailwind.config.js` mehr.
-
-```css
-:root {
-  --color-bg: #080808;       /* Hintergrund — hier anpassen */
-  --color-accent: #c8a98a;   /* Akzentfarbe — hier anpassen */
-  /* ... */
-}
+```bash
+# .env.local
+ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-Danach sofort als Tailwind-Klasse nutzbar: `bg-bg`, `text-accent`, `border-accent-light` etc.
+---
+
+## Deployment
+
+Docker Multi-Stage Build auf Coolify (VPS w-y-t.space).
+
+**Environment Variables (Coolify):**
+- `BUILD_STANDALONE=true`
+- `ANTHROPIC_API_KEY=sk-ant-...`
+
+**Domain:** `quality.burghardt.studio`
+**DNS:** A-Record → `62.169.30.171`
+**SSL:** Automatisch via Traefik
+**Auto-Deploy:** Push auf `main`
 
 ---
 
-## Bekannte Fallstricke
+## User Flow
 
-**`package-lock.json` vergessen zu committen**
-→ Docker-Build schlägt mit `npm ci`-Fehler fehl. Nach jedem `npm install` committen.
+```
+1. Kunde erhält Link (WhatsApp, E-Mail, QR-Code)
+2. Willkommens-Screen mit Logo + Begrüßung
+3. Kategorien bewerten (Sterne 1-5) + Projekttyp(en) wählen
+4. Stimmungs-Tags + optionaler Freitext + Tonalität wählen
+5. Routing: >= 3 Sterne → Review generieren | < 3 → Feedback-Screen
+6. Text kopieren → Weiter zu Google Reviews
+```
 
-**`public/` Ordner fehlt**
-→ Bereits mit `.gitkeep` enthalten. Nicht löschen.
+---
 
-**Font-Variable zirkulär referenziert**
-→ In `@theme inline` niemals `--font-display: var(--font-display)` schreiben. Stattdessen den Font-Stack direkt angeben: `--font-display: var(--font-playfair), "Playfair Display", serif`.
+## API
 
-**Dev-Server auf Port 3000 nicht erreichbar**
-→ Next.js wechselt automatisch auf 3001 wenn 3000 belegt ist.
+```
+POST /api/generate
+Content-Type: application/json
+
+{
+  "clientSlug": "burghardt-studio",
+  "ratings": { "communication": 5, "design-quality": 5, ... },
+  "selectedTags": ["kreativ", "zuverlässig"],
+  "personalNote": "Das Logo ist super!",
+  "tone": "normal",
+  "projectTypes": ["website", "branding"],
+  "projectName": "Autohaus Paulmann"
+}
+
+→ { "reviewText": "...", "overallStars": 5 }
+```
+
+---
+
+## Kosten
+
+~$0.001 pro Generierung (Claude Haiku 4.5). Geschätzt < $1/Monat bei 100 Reviews.
