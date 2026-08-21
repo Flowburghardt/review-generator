@@ -1,3 +1,14 @@
+export interface ProjectTypeConfig {
+  id: string;
+  label: string;
+  /**
+   * Aussagen, keine Eigenschaften. Der Prompt baut den Text um 1-2 davon herum,
+   * deshalb muss hier etwas Erzählbares stehen ("Seite war schnell online"),
+   * kein Adjektiv ("zuverlässig"). Adjektive erzeugen wieder Adjektiv-Texte.
+   */
+  factChips: string[];
+}
+
 export interface ClientConfig {
   slug: string;
   businessName: string;
@@ -12,32 +23,26 @@ export interface ClientConfig {
     logoUrl?: string;
     fontDisplay?: string;
   };
-  categories: Array<{
-    id: string;
-    label: string;
-    icon?: string;
-  }>;
-  moodTags: Array<{
-    label: string;
-    sentiment: "positive" | "neutral" | "negative";
-  }>;
+  projectTypes: ProjectTypeConfig[];
+  /** Notausgang: Wer hiervon etwas wählt, wird zum Feedback-Screen geleitet statt zu Google. */
+  negativeChips: string[];
   aiContext: string;
   feedbackEmail?: string;
 }
 
 export interface GenerateRequest {
   clientSlug: string;
-  ratings: Record<string, number>;
-  selectedTags: string[];
+  projectTypes: string[];
+  selectedFacts: string[];
   personalNote?: string;
   tone?: string;
-  projectTypes?: string[];
   projectName?: string;
 }
 
 export interface GenerateResponse {
   reviewText: string;
-  overallStars: number;
+  /** Die Notiz wurde vom Injection-Filter verworfen — im UI sichtbar machen. */
+  noteDropped?: boolean;
 }
 
 export interface GenerateErrorResponse {

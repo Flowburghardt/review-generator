@@ -14,16 +14,16 @@ export default function FeedbackScreen({
   feedbackEmail,
 }: FeedbackScreenProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
-      className="flex flex-col items-center gap-6 py-8 text-center"
-    >
+    // Keine eigene Entrance — der Step-Wrapper animiert diesen Screen schon.
+    <div className="flex flex-col items-center gap-6 py-8 text-center">
+      {/*
+        Kein Bounce hier: Das ist der Screen, auf dem jemand gerade gesagt hat,
+        dass etwas nicht rund lief. Ein hüpfendes Herz wäre der falsche Ton.
+      */}
       <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.2 }}
+        initial={{ scale: 0.94, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
       >
         <Heart size={48} className="text-accent" />
       </motion.div>
@@ -43,7 +43,7 @@ export default function FeedbackScreen({
         <motion.a
           href={`mailto:${feedbackEmail}`}
           className={cn(
-            "inline-flex items-center gap-2 rounded-xl border border-accent-subtle px-5 py-3",
+            "inline-flex items-center gap-2 rounded-xl border border-accent/20 px-5 py-3",
             "text-sm font-medium text-text",
             "transition-colors duration-150 hover:bg-bg-elevated",
             "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
@@ -55,6 +55,6 @@ export default function FeedbackScreen({
           Direkt per E-Mail schreiben
         </motion.a>
       )}
-    </motion.div>
+    </div>
   );
 }

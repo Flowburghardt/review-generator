@@ -1,27 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, Copy, Check, ExternalLink, RefreshCw } from "lucide-react";
+import { Copy, Check, ExternalLink, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ReviewOutputProps {
   reviewText: string;
-  overallStars: number;
   googleReviewUrl: string;
   onRegenerate: () => void;
   canRegenerate: boolean;
+  isGenerating: boolean;
+  /** Die eigene Notiz wurde verworfen — das gehört gesagt, nicht verschwiegen. */
+  noteDropped?: boolean;
 }
 
 export default function ReviewOutput({
   reviewText,
-  overallStars,
   googleReviewUrl,
   onRegenerate,
   canRegenerate,
+  isGenerating,
+  noteDropped,
 }: ReviewOutputProps) {
   const [copied, setCopied] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
+
+  // Nach dem Neu-Erzeugen liegt der ALTE Text in der Zwischenablage. Ohne
+  // diesen Reset stünde Schritt 2 offen und jemand fügt bei Google die
+  // vorherige Fassung ein.
+  useEffect(() => {
+    setCopied(false);
+    setHasCopied(false);
+  }, [reviewText]);
 
   async function handleCopy() {
     try {
@@ -45,47 +56,35 @@ export default function ReviewOutput({
   }
 
   function handleOpenGoogle() {
-    window.open(googleReviewUrl, "_blank");
+    window.open(googleReviewUrl, "_blank", "noopener,noreferrer");
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
-      className="flex flex-col gap-4"
-    >
-      {/* Generated review text */}
+    // Keine eigene Entrance-Animation: Diese Komponente sitzt bereits in einem
+    // animierten Step-Wrapper (ReviewFlow). Zwei ineinander verschachtelte
+    // Opacity-Animationen multiplizieren sich — der Screen bleibt länger blass,
+    // und die Bewegung läuft diagonal (Parent auf x, Kind auf y).
+    <div className="flex flex-col gap-4">
       <div className="rounded-2xl bg-bg-card p-4">
         <p className="whitespace-pre-wrap font-body text-sm leading-relaxed text-text">
           {reviewText}
         </p>
       </div>
 
-      {/* Star recommendation */}
-      <div className="flex flex-col items-center gap-1.5 text-center">
-        <div className="flex gap-0.5">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <Star
-              key={star}
-              size={20}
-              className={cn(
-                star <= overallStars
-                  ? "text-star fill-current"
-                  : "text-star-empty"
-              )}
-              fill={star <= overallStars ? "currentColor" : "none"}
-            />
-          ))}
-        </div>
-        <p className="text-sm text-text-muted">
-          Wir empfehlen {overallStars} Sterne — du entscheidest natürlich selbst
+      {noteDropped && (
+        <p className="rounded-xl bg-tag-negative px-4 py-3 text-sm text-text">
+          Deine eigene Notiz konnten wir nicht verwenden — sie enthielt etwas,
+          das wie eine Anweisung aussah. Der Text unten kommt nur aus deiner
+          Auswahl.
         </p>
-      </div>
+      )}
 
-      {/* Two-step action flow */}
+      <p className="text-center text-sm text-text-muted">
+        Passt der Text? Dann kopieren und drüben bei Google einfügen.
+      </p>
+
       <div className="flex flex-col gap-2.5">
-        {/* Step 1: Copy */}
+        {/* Schritt 1: Kopieren */}
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-medium uppercase tracking-wider text-text-subtle">
             Schritt 1
@@ -143,7 +142,7 @@ export default function ReviewOutput({
           </motion.button>
         </div>
 
-        {/* Step 2: Google */}
+        {/* Schritt 2: Google */}
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-medium uppercase tracking-wider text-text-subtle">
             Schritt 2
@@ -157,7 +156,7 @@ export default function ReviewOutput({
               "text-base font-semibold",
               "[-webkit-tap-highlight-color:transparent]",
               "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-              "transition-all duration-300",
+              "transition-colors duration-150",
               hasCopied
                 ? "bg-accent text-bg"
                 : "cursor-not-allowed border border-accent/20 bg-transparent text-text-subtle opacity-40"
@@ -170,35 +169,38 @@ export default function ReviewOutput({
           </motion.button>
           <p className="text-center text-xs text-text-muted">
             {hasCopied
-              ? "Jetzt Text einfügen und Sterne vergeben"
-              : "Kopiere zuerst den Text"}
+              ? "Text einfügen — die Sterne vergibst du dort selbst."
+              : "Kopiere zuerst den Text."}
           </p>
         </div>
 
-        {/* Regenerate */}
         {canRegenerate && (
           <motion.button
             type="button"
             onClick={onRegenerate}
+            disabled={isGenerating}
             className={cn(
               "flex items-center justify-center gap-2 rounded-xl border border-accent/20 px-4 py-2.5",
               "text-sm font-medium text-text-muted",
               "[-webkit-tap-highlight-color:transparent]",
               "transition-colors duration-150 hover:border-accent/40",
-              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+              isGenerating && "cursor-not-allowed opacity-50"
             )}
-            whileTap={{ scale: 0.98 }}
+            whileTap={isGenerating ? {} : { scale: 0.98 }}
           >
-            <RefreshCw size={14} />
-            Neu generieren
+            <RefreshCw
+              size={14}
+              className={cn(isGenerating && "animate-spin")}
+            />
+            {isGenerating ? "Wird geschrieben …" : "Anderen Text erzeugen"}
           </motion.button>
         )}
       </div>
 
-      {/* AI disclaimer */}
       <p className="text-center text-[11px] text-text-muted opacity-60">
         Dieser Text wurde mit KI-Unterstützung erstellt
       </p>
-    </motion.div>
+    </div>
   );
 }

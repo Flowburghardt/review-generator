@@ -1,24 +1,100 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { getClientConfig } from "@/config";
-import { isRateLimited } from "@/lib/rate-limit";
+import { isRateLimited, isGloballyRateLimited } from "@/lib/rate-limit";
 import type { GenerateRequest } from "@/config/types";
 
 const anthropic = new Anthropic();
 
 const STYLE_SEEDS = ["casual", "sachlich", "enthusiastisch"] as const;
 
-const TONE_INSTRUCTIONS: Record<string, string> = {
-  normal: `EMOJIS: Setze 1-2 passende Emojis ein — am Satzende oder als Abschluss. Nicht übertreiben. Beispiele: 👍 🙌 ✌️ 💯 😊`,
-  serious: `TONALITÄT: Seriös und professionell. Schreibe wie ein zufriedener Geschäftskunde, der eine sachliche aber positive Bewertung hinterlässt. Kein Slang, keine Umgangssprache.`,
-  poem: `TONALITÄT: Schreibe die Bewertung als kurzes GEREIMTES Gedicht (4-8 Zeilen). JEDE Zeile muss sich mit einer anderen reimen — AABB oder ABAB Schema. Prüfe jeden Reim: Reimt sich "gut" auf "Mut"? Ja. Reimt sich "gut" auf "top"? Nein. Wenn es sich nicht reimt, schreib die Zeile um. Kreativ und witzig, nicht kitschig.`,
-  song: `TONALITÄT: Schreibe die Bewertung wie einen kurzen Songtext/Refrain (4-8 Zeilen). Mit Rhythmus und Wiederholungen. Darf auch Zeilen haben die sich reimen, muss aber nicht. Denk an eingängige Hooks.`,
-  "gen-z": `TONALITÄT: Schreibe im Gen-Z Stil. Nutze Ausdrücke wie "no cap", "fr fr", "slay", "lowkey", "hits different", "based", "living rent-free in my head". Kurze Sätze. Casual. Aber trotzdem muss klar werden was gut war. EMOJIS: 2-4 Emojis einstreuen — 🔥 💅 ✨ 😭 💀 🫶 passend zum Vibe.`,
-  haiku: `TONALITÄT: Schreibe die Bewertung als Haiku (5-7-5 Silben). Exakt 3 Zeilen. Erste Zeile 5 Silben, zweite 7, dritte 5. Zähle die Silben sorgfältig. Poetisch und verdichtet. EMOJIS: Genau 1 passendes Emoji am Ende (🌸 ✨ 🎯 🖤).`,
+const MAX_NOTE_CHARS = 600;
+/** Grosszuegig fuer den echten Flow (~1 KB), aber kein offenes Scheunentor. */
+const MAX_BODY_BYTES = 8 * 1024;
+
+/** Wie oft ein Text absichtlich eine kleine Unsauberkeit bekommt. */
+const IMPERFECTION_RATE = 0.6;
+
+interface ToneSpec {
+  instruction: string;
+  length: string;
+  maxTokens: number;
+  /** Bei gebundenen Formen wuerde ein absichtlicher Fehler wie ein Patzer wirken. */
+  allowsImperfection: boolean;
+}
+
+const TONES: Record<string, ToneSpec> = {
+  normal: {
+    instruction:
+      "TONALITÄT: Locker und normal, wie man einem Bekannten davon erzählt. EMOJIS: höchstens eines, am Ende, und nur wenn es sich natürlich anfühlt.",
+    length: "3-5 Sätze.",
+    maxTokens: 400,
+    allowsImperfection: true,
+  },
+  serious: {
+    instruction:
+      "TONALITÄT: Sachlich und geschäftlich. Wie ein zufriedener Geschäftskunde, der sich kurz fasst. Kein Slang, keine Emojis.",
+    length: "2-4 Sätze.",
+    maxTokens: 350,
+    allowsImperfection: true,
+  },
+  kurz: {
+    instruction:
+      "TONALITÄT: Sehr knapp. Jemand, der nicht viel schreibt, aber das Wichtigste sagt. Keine Emojis.",
+    length: "1-2 Sätze. Wirklich kurz.",
+    maxTokens: 200,
+    allowsImperfection: true,
+  },
+  "wie-vorher": {
+    instruction:
+      "TONALITÄT: Beginne bei der Ausgangslage VOR der Zusammenarbeit — was gefehlt hat, was das Problem war, wie es vorher aussah. Dann erst, was daraus geworden ist. Der Kontrast trägt den Text. Keine Adjektiv-Aufzählung, keine Zusammenfassung am Ende.",
+    length: "3-5 Sätze.",
+    maxTokens: 400,
+    allowsImperfection: true,
+  },
+  poem: {
+    instruction:
+      'TONALITÄT: Schreibe die Bewertung als kurzes GEREIMTES Gedicht. JEDE Zeile muss sich mit einer anderen reimen — AABB oder ABAB. Prüfe jeden Reim: Reimt sich "gut" auf "Mut"? Ja. Reimt sich "gut" auf "top"? Nein. Wenn es sich nicht reimt, schreib die Zeile um. Kreativ, nicht kitschig.',
+    length: "4-8 Zeilen.",
+    maxTokens: 500,
+    allowsImperfection: false,
+  },
 };
 
+const DEFAULT_TONE = "normal";
+
+/**
+ * `x-forwarded-for` ist client-setzbar, und Traefik HÄNGT die echte IP hinten
+ * AN, statt den Header zu ersetzen. Nimmt man den Header roh als Schlüssel,
+ * erzeugt jeder Request einen neuen Bucket und das Limit greift nie.
+ */
+function clientIp(request: NextRequest): string {
+  const realIp = request.headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
+
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const hops = forwarded
+      .split(",")
+      .map((h) => h.trim())
+      .filter(Boolean);
+    if (hops.length > 0) return hops[hops.length - 1];
+  }
+
+  return "unknown";
+}
+
 export async function POST(request: NextRequest) {
-  const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+  const ip = clientIp(request);
+
+  // Body-Limit VOR dem Parsen — sonst liest man erst 1 MB ein und lehnt danach ab.
+  const declaredLength = Number(request.headers.get("content-length") || 0);
+  if (declaredLength > MAX_BODY_BYTES) {
+    return NextResponse.json(
+      { error: "Anfrage zu groß.", retryable: false },
+      { status: 413 }
+    );
+  }
 
   if (isRateLimited(ip)) {
     return NextResponse.json(
@@ -26,16 +102,59 @@ export async function POST(request: NextRequest) {
       { status: 429 }
     );
   }
+  // Der globale Tagesdeckel wird bewusst ERST unmittelbar vor dem Claude-Call
+  // gezogen (weiter unten). Zöge man ihn hier, könnten 300 billige
+  // 400er-Requests ohne einen einzigen API-Aufruf das Tagesbudget aufbrauchen
+  // und echte Kunden 24 h aussperren — ein Selbst-DoS.
 
-  let body: GenerateRequest;
+  const raw = await request.text();
+  if (raw.length > MAX_BODY_BYTES) {
+    return NextResponse.json(
+      { error: "Anfrage zu groß.", retryable: false },
+      { status: 413 }
+    );
+  }
+
+  let parsed: unknown;
   try {
-    body = await request.json();
+    parsed = JSON.parse(raw);
   } catch {
     return NextResponse.json(
       { error: "Ungültige Anfrage.", retryable: false },
       { status: 400 }
     );
   }
+
+  // TypeScript prüft zur Laufzeit nichts: `null` ist valides JSON, und ein
+  // String hat ebenfalls `.includes` — "websitebranding" hätte sonst zwei
+  // Projekttypen auf einmal freigeschaltet. Ohne diese Guards enden solche
+  // Anfragen als 500 statt als sauberer 400.
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    return NextResponse.json(
+      { error: "Ungültige Anfrage.", retryable: false },
+      { status: 400 }
+    );
+  }
+
+  const body = parsed as Partial<GenerateRequest>;
+
+  if (
+    typeof body.clientSlug !== "string" ||
+    !Array.isArray(body.projectTypes) ||
+    !Array.isArray(body.selectedFacts)
+  ) {
+    return NextResponse.json(
+      { error: "Ungültige Anfrage.", retryable: false },
+      { status: 400 }
+    );
+  }
+
+  const requestedTypes = body.projectTypes.filter(
+    (t): t is string => typeof t === "string"
+  );
+  const requestedFacts = body.selectedFacts.filter(
+    (f): f is string => typeof f === "string"
+  );
 
   const config = getClientConfig(body.clientSlug);
   if (!config) {
@@ -45,107 +164,146 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Validate ratings
-  const validCategoryIds = config.categories.map((c) => c.id);
-  for (const [key, value] of Object.entries(body.ratings)) {
-    if (!validCategoryIds.includes(key)) {
-      return NextResponse.json(
-        { error: "Ungültige Kategorie.", retryable: false },
-        { status: 400 }
-      );
-    }
-    if (typeof value !== "number" || value < 1 || value > 5) {
-      body.ratings[key] = Math.max(1, Math.min(5, Math.round(value)));
-    }
+  // Projekttypen gegen die Config validieren, NICHT gegen eine Liste im Code.
+  // Vorher stand die Liste hart in dieser Datei und war um "beratung" veraltet —
+  // die Auswahl verschwand dadurch lautlos aus dem Prompt.
+  const selectedTypes = config.projectTypes.filter((t) =>
+    requestedTypes.includes(t.id)
+  );
+
+  if (selectedTypes.length === 0) {
+    return NextResponse.json(
+      { error: "Bitte wähle aus, worum es ging.", retryable: false },
+      { status: 400 }
+    );
   }
 
-  // Validate tags against whitelist
-  const validTags = config.moodTags.map((t) => t.label);
-  const sanitizedTags = (body.selectedTags || []).filter((t) => validTags.includes(t));
+  // Notausgang: Negatives gehört zum Feedback-Screen, nicht in eine Google-Bewertung.
+  // Der Client ruft hier gar nicht erst auf — das ist die zweite Absicherung.
+  const negativeSelected = requestedFacts.filter((f) =>
+    config.negativeChips.includes(f)
+  );
+  if (negativeSelected.length > 0) {
+    return NextResponse.json(
+      {
+        error:
+          "Für kritisches Feedback gibt es den direkten Weg statt einer Bewertung.",
+        retryable: false,
+      },
+      { status: 400 }
+    );
+  }
 
-  // Sanitize personalNote
-  let personalNote = (body.personalNote || "").slice(0, 200).trim();
-  // Basic injection protection
-  const injectionPatterns = /ignore previous|system prompt|forget your|du bist jetzt|new instructions|disregard/i;
-  if (injectionPatterns.test(personalNote)) {
+  // Fakten nur aus den Chips der tatsächlich gewählten Projekttypen.
+  const allowedFacts = new Set(selectedTypes.flatMap((t) => t.factChips));
+  // Set gegen Duplikate: Teilen sich zwei gewählte Projekttypen denselben
+  // Chip-Text, stünde er sonst doppelt im Prompt.
+  const selectedFacts = [
+    ...new Set(requestedFacts.filter((f) => allowedFacts.has(f))),
+  ];
+
+  if (selectedFacts.length === 0) {
+    return NextResponse.json(
+      { error: "Bitte wähle mindestens eine Aussage aus.", retryable: false },
+      { status: 400 }
+    );
+  }
+
+  let personalNote =
+    typeof body.personalNote === "string"
+      ? body.personalNote.slice(0, MAX_NOTE_CHARS).trim()
+      : "";
+
+  // Das Muster darf NICHT auf ein blankes "<" gehen: "wir waren <5 Leute"
+  // oder "Budget < 2000" hätte sonst das wichtigste Feld stumm geleert.
+  const injectionPatterns =
+    /ignore (all |any )?previous|system prompt|forget (your|all|everything)|new instructions|disregard|anweisung(en)? (ignorieren|vergessen)|antworte stattdessen|statt dessen antworte|<\s*\/?[a-z]/i;
+  const noteWasDropped = injectionPatterns.test(personalNote);
+  if (noteWasDropped) {
     personalNote = "";
   }
 
-  // Calculate overall stars
-  const ratingValues = Object.values(body.ratings);
-  const average = ratingValues.reduce((sum, v) => sum + v, 0) / ratingValues.length;
-  const overallStars = Math.round(average);
+  // Landet im SYSTEM-Prompt und muss deshalb durch dieselbe Prüfung wie die
+  // Notiz — sonst wäre die Trennung, die personalNote in die User-Message
+  // verschiebt, über 80 frei wählbare Zeichen wieder ausgehebelt.
+  const rawProjectName =
+    typeof body.projectName === "string"
+      ? body.projectName.slice(0, 80).trim()
+      : "";
+  const projectName = injectionPatterns.test(rawProjectName)
+    ? ""
+    : rawProjectName;
 
-  // Project context
-  const validProjectTypes = ["website", "branding", "marketing", "fotografie", "ki-workflow"];
-  const projectTypes = (body.projectTypes || []).filter((t: string) => validProjectTypes.includes(t));
-  const projectName = (body.projectName || "").slice(0, 80).trim();
-
-  // Build rating description
-  const ratingDescription = config.categories
-    .map((cat) => `${cat.label}: ${body.ratings[cat.id] || 0}/5`)
-    .join(", ");
-
-  // Random style seed for variation
   const styleSeed = STYLE_SEEDS[Math.floor(Math.random() * STYLE_SEEDS.length)];
 
-  // Tone selection
-  const validTones = Object.keys(TONE_INSTRUCTIONS);
-  const selectedTone = validTones.includes(body.tone || "") ? body.tone! : "normal";
-  const toneInstruction = TONE_INSTRUCTIONS[selectedTone];
+  const toneId =
+    typeof body.tone === "string" && Object.hasOwn(TONES, body.tone)
+      ? body.tone
+      : DEFAULT_TONE;
+  const tone = TONES[toneId];
 
-  const systemPrompt = `Du schreibst eine Google-Bewertung im Namen eines Kunden für "${config.businessName}" (${config.aiContext}). Der Inhaber heißt ${config.ownerName}.
+  // "Nur gelegentlich" kann ein Modell bei einem Einzelaufruf nicht befolgen —
+  // es kennt die anderen Texte nicht. Also hier würfeln und dann hart anweisen.
+  const withImperfection = tone.allowsImperfection && Math.random() < IMPERFECTION_RATE;
+
+  const imperfectionBlock = withImperfection
+    ? `MENSCHLICHE UNSAUBERKEIT (genau EINE, nicht mehr):
+Baue genau eine kleine Unsauberkeit ein, wie sie in echten Bewertungen vorkommt — ein fehlendes Komma, ein "das" statt "dass", ein abgehackter Satz ohne Verb, oder ein zusammengezogenes Wort ("aufm", "hab"). Sie darf nicht wie ein Tippfehler im Firmennamen aussehen und nicht den Sinn verdrehen.`
+    : `SAUBERKEIT: Rechtschreibung und Zeichensetzung korrekt.`;
+
+  const systemPrompt = `Du schreibst eine Google-Bewertung im Namen eines Kunden für "${config.businessName}" (${config.aiContext}). Der Inhaber heißt ${config.ownerName}. Du schreibst AUS SICHT DES KUNDEN, in der Ich-Form.
+
+DAS HIER IST DER KERN:
+Der Kunde hat die folgenden Aussagen selbst angeklickt. Bau den Text um EINE ODER ZWEI davon herum und erzähle sie aus. Nicht alle abarbeiten — such dir die stärkste aus und mach sie konkret.
+${selectedFacts.map((f) => `- ${f}`).join("\n")}
+
+Erfinde NICHTS dazu: keine Zahlen, keine Orte, keine Namen, keine Details, die oben nicht stehen. Was der Kunde nicht angeklickt hat, ist nicht passiert.
 
 STIL: ${styleSeed}
-${toneInstruction ? `\n${toneInstruction}\n` : ""}
-LÄNGE: ${selectedTone === "poem" || selectedTone === "song" ? "4-8 Zeilen." : selectedTone === "haiku" ? "Exakt 3 Zeilen (5-7-5 Silben)." : "Exakt 2-3 Sätze. Kurz und knackig. Echte Google-Bewertungen sind selten länger."}
+${tone.instruction}
+LÄNGE: ${tone.length}
+
+${imperfectionBlock}
 
 VERBOTEN:
 - KI-Floskeln: "Ich möchte betonen", "Absolut empfehlenswert!", "Ich kann nur empfehlen", "Was mich besonders begeistert hat"
 - Abschluss-Floskeln: "Gerne wieder!", "Jederzeit wieder!", "Kann ich nur weiterempfehlen!"
+- Leere Bewertungsfloskeln: "das Preis-Leistungs-Verhältnis stimmt", "ohne unnötige Umschweife", "die Kommunikation war unkompliziert", "professionell und zuverlässig"
+- Adjektiv-Ketten als Ersatz für Inhalt: "kreativ, zuverlässig und schnell"
 - Superlativ-Ketten: "beste, tollste, großartigste"
 - Werbe-Sprech: "in den Bann ziehen", "überzeugt auf ganzer Linie"
 - Gewollt jugendlich: "mega", "geilo", "richtig krass"
 - Aufzählungen oder Bullet Points
-- NICHT alle Kategorien einzeln abarbeiten — pick 1-2 Aspekte und erzähle davon
 
 SO KLINGT ES ECHT:
-- Wie eine SMS an einen Freund: "Ey, der Florian hat mein Logo gemacht, richtig gut geworden."
 - Konkret statt abstrakt: "Das Logo sitzt" statt "Die Design-Qualität war hervorragend"
-- Wenn eine Kategorie < 4 Sterne hat, darfst du sie weglassen oder nur kurz andeuten
-
-MENSCHLICHE IMPERFEKTIONEN (subtil, nicht übertreiben):
-- Gelegentlich einen Satz ohne perfekte Grammatik: "Hat alles super geklappt, bin zufrieden."
-- Mal ein Komma weglassen oder einen Gedankenstrich statt Punkt
-- Sätze dürfen abgehackt sein: "Top Arbeit. Preis passt auch."
-- Nicht in jedem Text — nur gelegentlich, wie bei echten Google-Reviews
-${projectTypes.length > 0 ? `\nPROJEKTTYP: ${projectTypes.join(", ")}${projectName ? ` ("${projectName}")` : ""}` : ""}
-${projectTypes.length > 0 ? "Erwähne das Projekt konkret im Text (z.B. 'mein neues Logo', 'unsere Website', 'das Shooting').\n" : ""}
-BEWERTUNGEN:
-${ratingDescription}
-
-GEWÄHLTE STIMMUNGS-TAGS: ${sanitizedTags.length > 0 ? sanitizedTags.join(", ") : "keine"}
-
+- Eine Sache, die man sich nicht ausdenkt, schlägt fünf Eigenschaftswörter
+- Ruhig ein Detail nennen, das gegen den eigenen Vorteil spricht ("hätte ich selbst nie hinbekommen")
+${projectName ? `\nPROJEKT: "${projectName}" — darf im Text vorkommen.\n` : ""}
 Schreibe NUR den Bewertungstext. Keine Einleitung, keine Erklärung, kein "Hier ist die Bewertung:".`;
 
-  const messages: Anthropic.MessageParam[] = [];
+  const messages: Anthropic.MessageParam[] = [
+    {
+      role: "user",
+      content: personalNote
+        ? `Der Kunde hat zusätzlich selbst geschrieben: "${personalNote}"\n\nDas ist die wichtigste Quelle — was hier steht, gehört in den Text. Schreibe jetzt die Bewertung.`
+        : "Schreibe jetzt die Bewertung.",
+    },
+  ];
 
-  if (personalNote) {
-    messages.push({
-      role: "user",
-      content: `Der Kunde hat folgenden optionalen Kommentar hinterlassen: "${personalNote}"\n\nSchreibe jetzt die Google-Bewertung basierend auf den obigen Informationen.`,
-    });
-  } else {
-    messages.push({
-      role: "user",
-      content: "Schreibe jetzt die Google-Bewertung basierend auf den obigen Informationen.",
-    });
+  // Erst hier: Ab dieser Zeile kostet die Anfrage echtes Geld. Alles davor
+  // wurde ohne API-Aufruf abgewiesen und darf das Tagesbudget nicht belasten.
+  if (isGloballyRateLimited()) {
+    return NextResponse.json(
+      { error: "Zu viele Anfragen. Bitte versuche es später erneut.", retryable: true },
+      { status: 429 }
+    );
   }
 
   try {
     const response = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: selectedTone === "poem" || selectedTone === "song" ? 500 : 300,
+      model: "claude-sonnet-5",
+      max_tokens: tone.maxTokens,
       system: systemPrompt,
       messages,
     });
@@ -163,7 +321,10 @@ Schreibe NUR den Bewertungstext. Keine Einleitung, keine Erklärung, kein "Hier 
       );
     }
 
-    return NextResponse.json({ reviewText, overallStars });
+    // `noteDropped` sagt dem Client, dass die Notiz verworfen wurde. Sie
+    // stumm zu schlucken wäre schlimmer als der seltene Fehlalarm — es ist
+    // das Feld, das den Text überhaupt unverwechselbar macht.
+    return NextResponse.json({ reviewText, noteDropped: noteWasDropped });
   } catch (error) {
     if (error instanceof Anthropic.APIError && error.status === 429) {
       return NextResponse.json(
