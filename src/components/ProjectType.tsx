@@ -3,17 +3,15 @@
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-export const PROJECT_TYPES = [
-  { id: "website", label: "Website" },
-  { id: "branding", label: "Branding" },
-  { id: "marketing", label: "Marketing" },
-  { id: "fotografie", label: "Fotografie" },
-  { id: "ki-workflow", label: "KI-Workflow" },
-  { id: "beratung", label: "Beratung" },
-];
+import type { ProjectTypeConfig } from "@/config/types";
 
 interface ProjectTypeProps {
+  /**
+   * Kommt aus der Client-Config, nicht aus einer Konstante hier.
+   * Vorher stand die Liste an zwei Orten (hier + Route-Whitelist) und lief
+   * auseinander — "Beratung" wurde serverseitig still verworfen.
+   */
+  types: ProjectTypeConfig[];
   selected: string[];
   onToggle: (type: string) => void;
   projectName: string;
@@ -21,6 +19,7 @@ interface ProjectTypeProps {
 }
 
 export default function ProjectType({
+  types,
   selected,
   onToggle,
   projectName,
@@ -29,12 +28,13 @@ export default function ProjectType({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <h3 className="text-base font-medium text-text">
-          Worum ging es?
-        </h3>
+        <h3 className="text-base font-medium text-text">Worum ging es?</h3>
+        <p className="text-sm text-text-muted">
+          Mehrfachauswahl — nimm alles, was gepasst hat.
+        </p>
       </div>
       <div className="flex flex-wrap gap-2">
-        {PROJECT_TYPES.map((type) => {
+        {types.map((type) => {
           const isSelected = selected.includes(type.id);
           return (
             <motion.button

@@ -6,15 +6,16 @@ import { cn } from "@/lib/utils";
 export interface ToneOption {
   id: string;
   label: string;
+  hint: string;
 }
 
+/** IDs müssen zu den Keys in `TONES` (api/generate/route.ts) passen. */
 export const TONE_OPTIONS: ToneOption[] = [
-  { id: "normal", label: "Normal" },
-  { id: "serious", label: "Seriös" },
-  { id: "poem", label: "Gedicht" },
-  { id: "song", label: "Songtext" },
-  { id: "gen-z", label: "Gen Z" },
-  { id: "haiku", label: "Haiku" },
+  { id: "normal", label: "Normal", hint: "locker erzählt" },
+  { id: "serious", label: "Seriös", hint: "sachlich, geschäftlich" },
+  { id: "kurz", label: "Kurz & knapp", hint: "ein, zwei Sätze" },
+  { id: "wie-vorher", label: "Wie's vorher war", hint: "Ausgangslage zuerst" },
+  { id: "poem", label: "Gedicht", hint: "gereimt, für Mutige" },
 ];
 
 interface ToneSelectorProps {
@@ -26,10 +27,9 @@ export default function ToneSelector({ selected, onChange }: ToneSelectorProps) 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
-        <h3 className="text-base font-medium text-text">Tonalität</h3>
-        <p className="text-sm text-text-muted">Wie soll die Bewertung klingen?</p>
+        <h3 className="text-base font-medium text-text">Wie soll es klingen?</h3>
       </div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {TONE_OPTIONS.map((tone) => {
           const isSelected = selected === tone.id;
           return (
@@ -38,8 +38,8 @@ export default function ToneSelector({ selected, onChange }: ToneSelectorProps) 
               type="button"
               onClick={() => onChange(tone.id)}
               className={cn(
-                "flex items-center justify-center rounded-xl border px-3 py-3",
-                "min-h-[48px]",
+                "flex flex-col items-start justify-center gap-0.5 rounded-xl border px-3.5 py-3",
+                "min-h-[56px] text-left",
                 "[-webkit-tap-highlight-color:transparent]",
                 "transition-colors duration-150",
                 "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
@@ -51,6 +51,7 @@ export default function ToneSelector({ selected, onChange }: ToneSelectorProps) 
               transition={{ type: "spring", stiffness: 500, damping: 25 }}
             >
               <span className="text-sm font-medium">{tone.label}</span>
+              <span className="text-xs text-text-subtle">{tone.hint}</span>
             </motion.button>
           );
         })}

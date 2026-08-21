@@ -2,8 +2,8 @@
   "slug": "burghardt-studio",
   "businessName": "burghardt.studio",
   "ownerName": "Florian",
-  "welcomeText": "Danke, dass du dir einen Moment nimmst! Dein Feedback hilft mir, noch besser zu werden.",
-  "googleReviewUrl": "https://dub.sh/bstudio",
+  "welcomeText": "Erstell dir in einer halben Minute eine Bewertung für burghardt.studio — Florian Burghardt. Du klickst an, was zutrifft, der Rest schreibt sich von selbst.",
+  "googleReviewUrl": "https://search.google.com/local/writereview?placeid=ChIJLwJ2LxxtpEcRYRBwbGm6bKA",
   "branding": {
     "accentColor": "#c8a98a",
     "accentColorLight": "#d4b89a",
@@ -11,26 +11,78 @@
     "textColor": "#f0ede8",
     "logoUrl": "/logo.svg"
   },
-  "categories": [
-    { "id": "communication", "label": "Kommunikation & Erreichbarkeit" },
-    { "id": "design-quality", "label": "Design-Qualität & Kreativität" },
-    { "id": "timeliness", "label": "Pünktlichkeit & Termintreue" },
-    { "id": "value", "label": "Preis-Leistungs-Verhältnis" },
-    { "id": "professionalism", "label": "Professionalität & Zuverlässigkeit" }
+  "projectTypes": [
+    {
+      "id": "website",
+      "label": "Website",
+      "factChips": [
+        "Seite war schnell online",
+        "die Texte hat er geschrieben",
+        "hat nachgefragt statt sich was auszudenken",
+        "läuft auf dem Handy genauso gut",
+        "Google-Profil gleich mit eingerichtet",
+        "Änderungen gingen unkompliziert",
+        "hat sich vorher angeschaut, was die Konkurrenz macht"
+      ]
+    },
+    {
+      "id": "branding",
+      "label": "Branding",
+      "factChips": [
+        "Firmenname mit entwickelt",
+        "Logo neu gezeichnet",
+        "mehrere Entwürfe zur Auswahl",
+        "Druckdaten fertig geliefert",
+        "Logo funktioniert auch klein und auf dem Fahrzeug",
+        "hat vorher den Markt angeschaut"
+      ]
+    },
+    {
+      "id": "marketing",
+      "label": "Marketing",
+      "factChips": [
+        "Texte kamen von ihm",
+        "hat mitgedacht statt nur auszuführen",
+        "Material war rechtzeitig fertig",
+        "hat vorher geschaut, wen wir überhaupt erreichen wollen"
+      ]
+    },
+    {
+      "id": "fotografie",
+      "label": "Fotografie",
+      "factChips": [
+        "Bilder waren schnell da",
+        "beim Shooting war es entspannt",
+        "Retusche sauber gemacht",
+        "hat sich Zeit genommen",
+        "die Bilder passen zur Marke"
+      ]
+    },
+    {
+      "id": "ki-workflow",
+      "label": "KI-Workflow",
+      "factChips": [
+        "spart mir jetzt jede Woche Zeit",
+        "hat mir erklärt, wie es funktioniert",
+        "läuft, ohne dass ich was machen muss",
+        "hat vorher geprüft, ob sich das überhaupt lohnt"
+      ]
+    },
+    {
+      "id": "beratung",
+      "label": "Beratung",
+      "factChips": [
+        "hat Klartext geredet",
+        "hat mir abgeraten, wo es nichts gebracht hätte",
+        "verständlich erklärt, ohne Fachchinesisch",
+        "hat sich vorher eingelesen"
+      ]
+    }
   ],
-  "moodTags": [
-    { "label": "detailverliebt", "sentiment": "positive" },
-    { "label": "schnelle Umsetzung", "sentiment": "positive" },
-    { "label": "kreative Ideen", "sentiment": "positive" },
-    { "label": "zuverlässig", "sentiment": "positive" },
-    { "label": "überraschend gut", "sentiment": "positive" },
-    { "label": "hat zugehört", "sentiment": "positive" },
-    { "label": "unkompliziert", "sentiment": "positive" },
-    { "label": "professionell", "sentiment": "positive" },
-    { "label": "solide Arbeit", "sentiment": "neutral" },
-    { "label": "wie besprochen", "sentiment": "neutral" },
-    { "label": "ausbaufähig", "sentiment": "negative" },
-    { "label": "hat nicht gepasst", "sentiment": "negative" }
+  "negativeChips": [
+    "hat länger gedauert als gedacht",
+    "die Abstimmung war zäh",
+    "lief nicht so rund"
   ],
   "aiContext": "Freelance Design-Studio für Branding, Webdesign, Fotografie und KI-Workflows in Erfurt",
   "feedbackEmail": "hello@burghardt.studio"

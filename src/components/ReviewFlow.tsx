@@ -1,79 +1,159 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ClientConfig } from "@/config/types";
 
-import WelcomeHeader from "./WelcomeHeader";
-import CategoryRatings from "./CategoryRatings";
-import MoodTags from "./MoodTags";
+import IntroScreen from "./IntroScreen";
+import ProjectType from "./ProjectType";
+import FactChips from "./FactChips";
 import PersonalNote from "./PersonalNote";
 import GenerateButton from "./GenerateButton";
 import ReviewOutput from "./ReviewOutput";
 import FeedbackScreen from "./FeedbackScreen";
 import ProgressIndicator from "./ProgressIndicator";
 import ToneSelector from "./ToneSelector";
-import ProjectType from "./ProjectType";
 
 interface ReviewFlowProps {
   config: ClientConfig;
 }
 
+const STEP_INTRO = 0;
+const STEP_WHAT = 1;
+const STEP_DETAILS = 2;
+const STEP_RESULT = 3;
 const TOTAL_STEPS = 3;
+
 const MAX_GENERATIONS = 3;
 
+/** Ease-out. Die eingebauten Kurven sind für Enter/Exit zu schwach. */
+const EASE_OUT = [0.23, 1, 0.32, 1] as const;
+
+/**
+ * `mode="wait"` ADDIERT Exit und Enter. Bei je 350 ms wären das 700 ms pro
+ * „Weiter"-Tap auf einem dreistufigen Formular — lang genug, dass jemand ein
+ * zweites Mal tippt. Der Austritt darf kurz sein, der Eintritt trägt die
+ * Bewegung.
+ */
 const stepVariants = {
-  enter: { opacity: 0, x: 60 },
-  center: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: -60 },
+  enter: { opacity: 0, x: 40 },
+  center: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.25, ease: EASE_OUT },
+  },
+  exit: {
+    opacity: 0,
+    x: -40,
+    transition: { duration: 0.15, ease: EASE_OUT },
+  },
 };
 
 export default function ReviewFlow({ config }: ReviewFlowProps) {
-  const [step, setStep] = useState(1);
-  const [ratings, setRatings] = useState<Record<string, number>>({});
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [step, setStep] = useState(STEP_INTRO);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedFacts, setSelectedFacts] = useState<string[]>([]);
   const [personalNote, setPersonalNote] = useState("");
+  const [projectName, setProjectName] = useState("");
+  const [tone, setTone] = useState("normal");
   const [generatedText, setGeneratedText] = useState<string | null>(null);
-  const [overallStars, setOverallStars] = useState<number | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateCount, setGenerateCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [tone, setTone] = useState("normal");
-  const [projectTypes, setProjectTypes] = useState<string[]>([]);
-  const [projectName, setProjectName] = useState("");
+  const [noteDropped, setNoteDropped] = useState(false);
 
-  const allCategoriesRated = useMemo(
-    () => config.categories.every((cat) => ratings[cat.id] > 0),
-    [config.categories, ratings]
-  );
+  /**
+   * Zwei schnelle Taps auf „Weiter" wären zwei Schritte auf einmal — der
+   * Details-Screen würde übersprungen und Freitext samt Stil blieben leer,
+   * ohne dass es jemand merkt. Ein Zeitfenster statt eines Sperr-States:
+   * so kann die Navigation nicht dauerhaft blockieren, wenn eine Animation
+   * einmal nicht sauber abschließt.
+   */
+  const lastNavRef = useRef(0);
+  const isGeneratingRef = useRef(false);
 
-  const hasSelectedTags = selectedTags.length > 0;
-
-  const averageRating = useMemo(() => {
-    const values = Object.values(ratings);
-    if (values.length === 0) return 0;
-    return values.reduce((sum, v) => sum + v, 0) / values.length;
-  }, [ratings]);
-
-  const isLowRating = averageRating > 0 && averageRating < 3;
-
-  const handleRate = useCallback((categoryId: string, value: number) => {
-    setRatings((prev) => ({ ...prev, [categoryId]: value }));
+  const guardNavigation = useCallback((navigate: () => void) => {
+    const now = Date.now();
+    if (now - lastNavRef.current < 400) return;
+    lastNavRef.current = now;
+    navigate();
   }, []);
 
-  const handleToggleTag = useCallback((tag: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+  /**
+   * Aussagen der aktuell gewählten Projekttypen. Dedupliziert, weil die Chips
+   * mit `key={fact}` gerendert werden — zwei Typen mit identischem Chip-Text
+   * ergäben sonst doppelte React-Keys.
+   */
+  const availableFacts = useMemo(
+    () => [
+      ...new Set(
+        config.projectTypes
+          .filter((t) => selectedTypes.includes(t.id))
+          .flatMap((t) => t.factChips)
+      ),
+    ],
+    [config.projectTypes, selectedTypes]
+  );
+
+  const hasNegative = useMemo(
+    () => selectedFacts.some((f) => config.negativeChips.includes(f)),
+    [config.negativeChips, selectedFacts]
+  );
+
+  const hasPositiveFact = useMemo(
+    () => selectedFacts.some((f) => availableFacts.includes(f)),
+    [availableFacts, selectedFacts]
+  );
+
+  const handleToggleProjectType = useCallback(
+    (typeId: string) => {
+      const isRemoving = selectedTypes.includes(typeId);
+      const nextTypes = isRemoving
+        ? selectedTypes.filter((t) => t !== typeId)
+        : [...selectedTypes, typeId];
+
+      setSelectedTypes(nextTypes);
+
+      if (isRemoving) {
+        // Die Chips des abgewählten Typs müssen mit raus — sonst bleiben
+        // Aussagen ausgewählt, die gar nicht mehr angeboten werden, und der
+        // Server verwirft sie stillschweigend.
+        // Gefiltert wird gegen die VERBLEIBENDEN Typen: Bietet ein anderer
+        // noch gewählter Typ denselben Chip-Text an, bleibt er stehen.
+        const stillOffered = new Set(
+          config.projectTypes
+            .filter((t) => nextTypes.includes(t.id))
+            .flatMap((t) => t.factChips)
+        );
+        setSelectedFacts((facts) =>
+          facts.filter(
+            (f) => stillOffered.has(f) || config.negativeChips.includes(f)
+          )
+        );
+      }
+    },
+    [config.projectTypes, config.negativeChips, selectedTypes]
+  );
+
+  const handleToggleFact = useCallback((fact: string) => {
+    setSelectedFacts((prev) =>
+      prev.includes(fact) ? prev.filter((f) => f !== fact) : [...prev, fact]
     );
   }, []);
 
   const handleGenerate = useCallback(async () => {
     if (generateCount >= MAX_GENERATIONS) return;
+    // Ohne diesen Guard feuern zwei Klicks während der 3–6 s Wartezeit zwei
+    // parallele Requests, verbrauchen zwei Rate-Limit-Slots, und angezeigt
+    // wird die zuletzt eintreffende — nicht die zuletzt gestartete.
+    if (isGeneratingRef.current) return;
+    isGeneratingRef.current = true;
 
     setIsGenerating(true);
     setError(null);
+    setNoteDropped(false);
 
     try {
       const res = await fetch("/api/generate", {
@@ -81,22 +161,28 @@ export default function ReviewFlow({ config }: ReviewFlowProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           clientSlug: config.slug,
-          ratings,
-          selectedTags,
+          projectTypes: selectedTypes,
+          selectedFacts,
           personalNote,
           tone,
-          projectTypes,
           projectName: projectName || undefined,
         }),
       });
 
+      // Fehlerseiten von Traefik oder ein 500er ohne JSON-Body sind kein JSON.
+      // Ohne das .catch() läge dem Kunden ein "Unexpected token '<'" im UI.
+      const data = await res.json().catch(() => null);
+
       if (!res.ok) {
-        throw new Error(`Fehler: ${res.status}`);
+        throw new Error(data?.error || `Fehler: ${res.status}`);
       }
 
-      const data = await res.json();
+      if (!data?.reviewText) {
+        throw new Error("Es kam kein Text zurück. Bitte versuche es erneut.");
+      }
+
       setGeneratedText(data.reviewText);
-      setOverallStars(data.overallStars ?? Math.round(averageRating));
+      setNoteDropped(Boolean(data.noteDropped));
       setGenerateCount((prev) => prev + 1);
     } catch (err) {
       setError(
@@ -105,118 +191,124 @@ export default function ReviewFlow({ config }: ReviewFlowProps) {
           : "Etwas ist schiefgelaufen. Bitte versuche es erneut."
       );
     } finally {
+      isGeneratingRef.current = false;
       setIsGenerating(false);
     }
   }, [
     config.slug,
-    ratings,
-    selectedTags,
+    selectedTypes,
+    selectedFacts,
     personalNote,
     tone,
-    averageRating,
+    projectName,
     generateCount,
   ]);
 
   const handleBack = useCallback(() => {
-    if (step > 1) {
+    guardNavigation(() => {
       setGeneratedText(null);
-      setOverallStars(null);
       setGenerateCount(0);
       setError(null);
-      setStep((prev) => prev - 1);
-    }
-  }, [step]);
+      setNoteDropped(false);
+      // Aus dem Ergebnis zurück: bei Negativ-Auswahl übersprang der Weg
+      // Schritt 2, also führt der Rückweg auch dorthin zurück.
+      setStep((prev) => {
+        if (prev === STEP_RESULT && hasNegative) return STEP_WHAT;
+        return Math.max(STEP_INTRO, prev - 1);
+      });
+    });
+  }, [guardNavigation, hasNegative]);
 
   const handleNext = useCallback(() => {
-    if (step === 2 && isLowRating) {
-      setStep(3);
-      return;
-    }
-    if (step < TOTAL_STEPS) {
-      setStep((prev) => prev + 1);
-    }
-  }, [step, isLowRating]);
+    guardNavigation(() => {
+      // Ein einziger negativer Chip schlägt jede positive Auswahl: Wer
+      // unzufrieden ist, soll bei Florian landen und nicht bei Google.
+      if (step === STEP_WHAT && hasNegative) {
+        setStep(STEP_RESULT);
+        return;
+      }
+      setStep((prev) => Math.min(STEP_RESULT, prev + 1));
+    });
+  }, [guardNavigation, step, hasNegative]);
 
-  const handleToggleProjectType = useCallback((type: string) => {
-    setProjectTypes((prev) =>
-      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
-    );
-  }, []);
-
+  // Ein negativer Chip allein genügt: Wer unzufrieden ist, soll den Ausgang
+  // nehmen können, ohne vorher einen Projekttyp zu wählen — sonst ist der
+  // Notausgang zwar sichtbar, aber verschlossen.
   const canProceed =
-    (step === 1 && allCategoriesRated && projectTypes.length > 0) ||
-    (step === 2 && hasSelectedTags);
+    (step === STEP_WHAT &&
+      (hasNegative || (selectedTypes.length > 0 && hasPositiveFact))) ||
+    step === STEP_DETAILS;
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-8 px-5 py-8">
-      <ProgressIndicator currentStep={step} totalSteps={TOTAL_STEPS} />
+      {step > STEP_INTRO && (
+        <ProgressIndicator currentStep={step} totalSteps={TOTAL_STEPS} />
+      )}
 
       <AnimatePresence mode="wait">
-        {step === 1 && (
+        {step === STEP_INTRO && (
           <motion.div
-            key="step-1"
+            key="step-intro"
             variants={stepVariants}
             initial="enter"
             animate="center"
             exit="exit"
-            transition={{ duration: 0.35, ease: "easeInOut" }}
-            className="flex flex-col gap-8"
           >
-            <WelcomeHeader
+            <IntroScreen
               businessName={config.businessName}
               welcomeText={config.welcomeText}
               logoUrl={config.branding.logoUrl}
-            />
-            <CategoryRatings
-              categories={config.categories}
-              ratings={ratings}
-              onRate={handleRate}
-            />
-            <ProjectType
-              selected={projectTypes}
-              onToggle={handleToggleProjectType}
-              projectName={projectName}
-              onProjectNameChange={setProjectName}
+              onStart={() => setStep(STEP_WHAT)}
             />
           </motion.div>
         )}
 
-        {step === 2 && (
+        {step === STEP_WHAT && (
           <motion.div
-            key="step-2"
+            key="step-what"
             variants={stepVariants}
             initial="enter"
             animate="center"
             exit="exit"
-            transition={{ duration: 0.35, ease: "easeInOut" }}
-            className="flex flex-col gap-6"
+            className="flex flex-col gap-7"
           >
-            <div className="flex flex-col gap-2">
-              <h2 className="font-display text-xl font-bold text-text">
-                Was hat dir besonders gefallen?
-              </h2>
-              <p className="text-sm text-text-muted">
-                Wähle mindestens einen Begriff aus.
-              </p>
-            </div>
-            <MoodTags
-              tags={config.moodTags}
-              selectedTags={selectedTags}
-              onToggle={handleToggleTag}
+            <ProjectType
+              types={config.projectTypes}
+              selected={selectedTypes}
+              onToggle={handleToggleProjectType}
+              projectName={projectName}
+              onProjectNameChange={setProjectName}
             />
+            <FactChips
+              facts={availableFacts}
+              negatives={config.negativeChips}
+              selected={selectedFacts}
+              onToggle={handleToggleFact}
+            />
+          </motion.div>
+        )}
+
+        {step === STEP_DETAILS && (
+          <motion.div
+            key="step-details"
+            variants={stepVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            className="flex flex-col gap-7"
+          >
             <PersonalNote value={personalNote} onChange={setPersonalNote} />
             <ToneSelector selected={tone} onChange={setTone} />
           </motion.div>
         )}
 
-        {step === 3 && isLowRating && (
+        {step === STEP_RESULT && hasNegative && (
           <motion.div
-            key="step-3-feedback"
+            key="step-feedback"
             variants={stepVariants}
             initial="enter"
             animate="center"
             exit="exit"
-            transition={{ duration: 0.35, ease: "easeInOut" }}
           >
             <FeedbackScreen
               businessName={config.businessName}
@@ -225,23 +317,21 @@ export default function ReviewFlow({ config }: ReviewFlowProps) {
           </motion.div>
         )}
 
-        {step === 3 && !isLowRating && !generatedText && (
+        {step === STEP_RESULT && !hasNegative && !generatedText && (
           <motion.div
-            key="step-3-generate"
+            key="step-generate"
             variants={stepVariants}
             initial="enter"
             animate="center"
             exit="exit"
-            transition={{ duration: 0.35, ease: "easeInOut" }}
             className="flex flex-col gap-5"
           >
             <div className="text-center">
               <h2 className="font-display text-xl font-bold text-text">
-                Bereit zum Generieren
+                Fertig zum Schreiben
               </h2>
               <p className="mt-1 text-sm text-text-muted">
-                Wir erstellen eine persönliche Bewertung basierend auf deinem
-                Feedback.
+                Wir bauen dir daraus einen Text. Du kannst ihn danach noch ändern.
               </p>
             </div>
             <GenerateButton
@@ -253,7 +343,7 @@ export default function ReviewFlow({ config }: ReviewFlowProps) {
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="text-center text-sm text-red-500"
+                className="text-center text-sm text-red-400"
               >
                 {error}
               </motion.p>
@@ -261,46 +351,44 @@ export default function ReviewFlow({ config }: ReviewFlowProps) {
           </motion.div>
         )}
 
-        {step === 3 && !isLowRating && generatedText && overallStars && (
+        {step === STEP_RESULT && !hasNegative && generatedText && (
           <motion.div
-            key="step-3-output"
+            key="step-output"
             variants={stepVariants}
             initial="enter"
             animate="center"
             exit="exit"
-            transition={{ duration: 0.35, ease: "easeInOut" }}
           >
             <ReviewOutput
               reviewText={generatedText}
-              overallStars={overallStars}
               googleReviewUrl={config.googleReviewUrl}
               onRegenerate={handleGenerate}
               canRegenerate={generateCount < MAX_GENERATIONS}
+              isGenerating={isGenerating}
+              noteDropped={noteDropped}
             />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Navigation buttons */}
-      {step < 3 && (
+      {/* Navigation */}
+      {step > STEP_INTRO && step < STEP_RESULT && (
         <div className="flex gap-3">
-          {step > 1 && (
-            <motion.button
-              type="button"
-              onClick={handleBack}
-              className={cn(
-                "flex items-center justify-center gap-1 rounded-2xl border border-accent/30 px-4 py-3",
-                "text-base font-medium text-text-muted",
-                "[-webkit-tap-highlight-color:transparent]",
-                "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-                "transition-colors duration-150 hover:border-accent/50"
-              )}
-              whileTap={{ scale: 0.98 }}
-            >
-              <ChevronLeft size={20} />
-              Zurück
-            </motion.button>
-          )}
+          <motion.button
+            type="button"
+            onClick={handleBack}
+            className={cn(
+              "flex items-center justify-center gap-1 rounded-2xl border border-accent/30 px-4 py-3",
+              "text-base font-medium text-text-muted",
+              "[-webkit-tap-highlight-color:transparent]",
+              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+              "transition-colors duration-150 hover:border-accent/50"
+            )}
+            whileTap={{ scale: 0.98 }}
+          >
+            <ChevronLeft size={20} />
+            Zurück
+          </motion.button>
           <motion.button
             type="button"
             onClick={handleNext}
@@ -316,14 +404,13 @@ export default function ReviewFlow({ config }: ReviewFlowProps) {
             whileHover={canProceed ? { scale: 1.02 } : {}}
             whileTap={canProceed ? { scale: 0.98 } : {}}
           >
-            Weiter
+            {step === STEP_WHAT && hasNegative ? "Feedback geben" : "Weiter"}
             <ChevronRight size={20} />
           </motion.button>
         </div>
       )}
 
-      {/* Back button on step 3 */}
-      {step === 3 && !isGenerating && (
+      {step === STEP_RESULT && !isGenerating && (
         <motion.button
           type="button"
           onClick={handleBack}

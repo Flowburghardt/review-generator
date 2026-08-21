@@ -1,30 +1,42 @@
 # Review Generator — quality.burghardt.studio
 
-KI-gestützte Google-Review-Generierung. Kunden bewerten per Sterne + Tags, die KI generiert einen natürlich klingenden Review-Text zum Kopieren und werden direkt zu Google Reviews weitergeleitet.
+Hilft Kunden dabei, eine Google-Bewertung zu schreiben, die nach ihnen klingt. Der Kunde klickt an, **was tatsächlich passiert ist**, die KI baut daraus einen Text zum Kopieren, danach geht es direkt zum Google-Bewertungsfenster.
 
-**Stack:** Next.js 15 · React 19 · TypeScript · Tailwind CSS v4 · Framer Motion · Anthropic SDK (Claude Haiku 4.5)
+**Stack:** Next.js 15 · React 19 · TypeScript · Tailwind CSS v4 · Framer Motion · Anthropic SDK (Claude Sonnet 5)
 
 **Live:** https://quality.burghardt.studio
 
 ---
 
+## Das Prinzip: Aussagen statt Adjektive
+
+Die erste Version fragte Sterne-Bewertungen und Stimmungs-Tags ab („kreativ", „zuverlässig"). Heraus kamen zwangsläufig Texte wie *„kreativ, zuverlässig und ohne unnötige Umschweife — das Preis-Leistungs-Verhältnis stimmt"*: fünf Adjektive entlang der Kategorienliste, kein einziger überprüfbarer Fakt. Wer Adjektive hineingibt, bekommt Adjektive heraus.
+
+Deshalb tragen die Chips heute **Aussagen**: „Seite war schnell online", „hat nachgefragt statt sich was auszudenken", „Google-Profil gleich mit eingerichtet". Der Prompt baut den Text um eine oder zwei davon herum und erzählt sie aus. Ein Klick für den Kunden, trotzdem Substanz im Text.
+
+**Sterne gibt es bewusst nicht mehr** — sie wurden nie zu Google übertragen und haben nur suggeriert, die Bewertung sei damit erledigt. Die Sterne vergibt der Kunde drüben bei Google selbst.
+
+---
+
 ## Features
 
-- **6 Tonalitäten:** Normal, Seriös, Gedicht, Songtext, Gen Z, Haiku
-- **Multi-Select Projekttypen:** Website, Branding, Marketing, Fotografie, KI-Workflow
-- **Optionaler Projektname** — wird im generierten Text erwähnt
-- **Intelligentes Routing:** < 3 Sterne Durchschnitt → Feedback-Screen (kein Google-Redirect)
-- **Copy-to-Clipboard** mit Textarea-Fallback
-- **Rate Limiting:** 10 Generierungen pro IP pro Stunde
-- **Prompt Injection Schutz**
-- **Menschliche Imperfektionen** im generierten Text
-- **DSGVO-konform:** Keine Cookies, kein Tracking, keine Datenspeicherung
+- **5 Sprachstile:** Normal, Seriös, Kurz & knapp, „Wie's vorher war" (startet bei der Ausgangslage), Gedicht
+- **Fakten-Chips pro Projekttyp** — kundenspezifisch in der Config hinterlegt
+- **Optionales Freitextfeld** (600 Zeichen), prominent platziert: die stärkste Quelle für einen unverwechselbaren Text
+- **Notausgang:** Wer einen der negativen Chips wählt, landet auf dem Feedback-Screen statt beim Google-Link — serverseitig zusätzlich abgesichert (HTTP 400)
+- **Menschliche Unsauberkeit** — per Zufallsentscheidung im Code (nicht per „gelegentlich" im Prompt, das kann ein Modell bei einem Einzelaufruf nicht befolgen)
+- **Copy-to-Clipboard** mit Textarea-Fallback, Google-Button erst nach dem Kopieren aktiv
+- **Rate Limiting:** 10 Generierungen/IP/Stunde + globaler Tagesdeckel, Body-Limit 8 KB
+- **Prompt-Injection-Filter** auf dem Freitext
+- **DSGVO-konform:** keine Cookies, kein Tracking, keine Datenspeicherung
 
 ---
 
 ## Multi-Tenant
 
-Ein JSON-File pro Kunde in `src/config/clients/`. Root-URL (`/`) = burghardt.studio, andere Kunden über Slug (`/lagerboxxen`, `/zucker-und-zimt`).
+Ein JSON-File pro Kunde in `src/config/clients/`. Root-URL (`/`) = burghardt.studio, weitere Kunden über ihren Slug (`/kundenname`).
+
+> **Stand heute: nur `burghardt-studio` ist registriert.** Jeder andere Slug liefert 404 (`notFound()`). Die Struktur ist für weitere Kunden vorbereitet, aber noch nicht befüllt.
 
 ### Neuen Kunden hinzufügen
 
@@ -35,8 +47,8 @@ Ein JSON-File pro Kunde in `src/config/clients/`. Root-URL (`/`) = burghardt.stu
   "slug": "kundenname",
   "businessName": "Kundenname GmbH",
   "ownerName": "Max",
-  "welcomeText": "Danke, dass du dir einen Moment nimmst!",
-  "googleReviewUrl": "https://g.page/r/XXXXX/review",
+  "welcomeText": "Erstell dir in einer halben Minute eine Bewertung für …",
+  "googleReviewUrl": "https://search.google.com/local/writereview?placeid=XXXXX",
   "branding": {
     "accentColor": "#c8a98a",
     "accentColorLight": "#d4b89a",
@@ -44,21 +56,26 @@ Ein JSON-File pro Kunde in `src/config/clients/`. Root-URL (`/`) = burghardt.stu
     "textColor": "#f0ede8",
     "logoUrl": "/logos/kundenname.svg"
   },
-  "categories": [
-    { "id": "quality", "label": "Qualität" },
-    { "id": "service", "label": "Service" },
-    { "id": "value", "label": "Preis-Leistung" }
+  "projectTypes": [
+    {
+      "id": "montage",
+      "label": "Montage",
+      "factChips": [
+        "war pünktlich da",
+        "hat hinterher aufgeräumt",
+        "hat vorher erklärt, was er macht"
+      ]
+    }
   ],
-  "moodTags": [
-    { "label": "freundlich", "sentiment": "positive" },
-    { "label": "schnell", "sentiment": "positive" },
-    { "label": "solide", "sentiment": "neutral" },
-    { "label": "enttäuschend", "sentiment": "negative" }
-  ],
+  "negativeChips": ["hat länger gedauert als gedacht", "lief nicht so rund"],
   "aiContext": "Beschreibung des Unternehmens für den KI-Prompt",
   "feedbackEmail": "info@kundenname.de"
 }
 ```
+
+> **`factChips` müssen Aussagen sein, keine Eigenschaften.** „war pünktlich da" funktioniert, „zuverlässig" nicht — daran ist die erste Version gescheitert.
+
+**Den `googleReviewUrl` nicht aus einer Maps-URL raten.** Er steht im Google-Unternehmensprofil selbst als `metadata.newReviewUri` (via Business-Profile-API abrufbar). Gerade wenn mehrere Profile an derselben Adresse liegen, landet ein geratener Link schnell beim Nachbarn.
 
 **2. Import hinzufügen** in `src/config/index.ts`:
 
@@ -75,32 +92,56 @@ const clients: Record<string, ClientConfig> = {
 
 **4. Push** → Auto-Deploy via Coolify.
 
+Die Projekttypen kommen ausschließlich aus dieser Config — die API leitet ihre Whitelist daraus ab. (Vorher stand die Liste zusätzlich hart in der Route und lief auseinander: „Beratung" war in der UI wählbar und wurde serverseitig stillschweigend verworfen.)
+
 ---
 
-## Personalisierbare Elemente pro Kunde
+## User Flow
 
-| Element | Config-Feld | Beispiel |
-|---------|-------------|---------|
-| Firmenname | `businessName` | "Lagerboxxen Erfurt" |
-| Inhabername | `ownerName` | "Andreas" (im Review-Text) |
-| Begrüßungstext | `welcomeText` | Persönliche Ansprache |
-| Google Review Link | `googleReviewUrl` | `https://g.page/r/XXXXX/review` |
-| Akzentfarbe | `branding.accentColor` | Kundenfarbe |
-| Logo | `branding.logoUrl` | SVG in `/public/logos/` |
-| Kategorien | `categories` | Branchenspezifisch |
-| Stimmungs-Tags | `moodTags` | Branchenspezifische Adjektive |
-| KI-Kontext | `aiContext` | Branchenbeschreibung |
-| Feedback-Email | `feedbackEmail` | Bei < 3 Sterne |
+```
+1. Kunde erhält Link (WhatsApp, E-Mail, QR-Code)
+2. Intro: was passiert hier, in drei Schritten
+3. Worum ging es? (Projekttypen) → passende Fakten-Chips klappen auf
+   darunter immer sichtbar: "Lief etwas nicht rund?"
+4. Optionaler Freitext + Sprachstil
+5. Routing: negativer Chip gewählt → Feedback-Screen | sonst → Text generieren
+6. Text kopieren → Google-Bewertungsfenster öffnet sich
+```
+
+---
+
+## API
+
+```
+POST /api/generate
+Content-Type: application/json
+
+{
+  "clientSlug": "burghardt-studio",
+  "projectTypes": ["website", "branding"],
+  "selectedFacts": ["Seite war schnell online", "Logo neu gezeichnet"],
+  "personalNote": "Wir hatten vorher gar keine Website.",
+  "tone": "wie-vorher",
+  "projectName": "Autohaus Paulmann"
+}
+
+→ { "reviewText": "...", "noteDropped": false }
+```
+
+`noteDropped: true` heißt: Der Injection-Filter hat die Freitext-Notiz verworfen. Das UI sagt das dem Kunden — eine stumm geschluckte Notiz wäre schlimmer als ein seltener Fehlalarm.
+
+Fehlerfälle: `400` ungültiger Body, fehlender/unbekannter Projekttyp, keine gültige Aussage, negativer Chip · `404` unbekannter Client · `413` Body > 8 KB · `429` Rate Limit (pro IP oder globaler Tagesdeckel).
 
 ---
 
 ## Lokale Entwicklung
 
 ```bash
+npm ci
 npm run dev        # Dev-Server (Turbopack)
 npm run build      # Production Build
-npm run type-check # TypeScript-Check
-npm run lint       # ESLint
+npm run type-check # TypeScript-Check ohne Build
+npm run lint       # ESLint (Flat Config, eslint.config.mjs)
 ```
 
 ### Environment Variables
@@ -114,7 +155,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 ## Deployment
 
-Docker Multi-Stage Build auf Coolify (VPS w-y-t.space).
+Docker Multi-Stage Build auf Coolify (VPS Aurora, `w-y-t.space`).
 
 **Environment Variables (Coolify):**
 - `BUILD_STANDALONE=true`
@@ -123,44 +164,10 @@ Docker Multi-Stage Build auf Coolify (VPS w-y-t.space).
 **Domain:** `quality.burghardt.studio`
 **DNS:** A-Record → `62.169.30.171`
 **SSL:** Automatisch via Traefik
-**Auto-Deploy:** Push auf `main`
-
----
-
-## User Flow
-
-```
-1. Kunde erhält Link (WhatsApp, E-Mail, QR-Code)
-2. Willkommens-Screen mit Logo + Begrüßung
-3. Kategorien bewerten (Sterne 1-5) + Projekttyp(en) wählen
-4. Stimmungs-Tags + optionaler Freitext + Tonalität wählen
-5. Routing: >= 3 Sterne → Review generieren | < 3 → Feedback-Screen
-6. Text kopieren → Weiter zu Google Reviews
-```
-
----
-
-## API
-
-```
-POST /api/generate
-Content-Type: application/json
-
-{
-  "clientSlug": "burghardt-studio",
-  "ratings": { "communication": 5, "design-quality": 5, ... },
-  "selectedTags": ["kreativ", "zuverlässig"],
-  "personalNote": "Das Logo ist super!",
-  "tone": "normal",
-  "projectTypes": ["website", "branding"],
-  "projectName": "Autohaus Paulmann"
-}
-
-→ { "reviewText": "...", "overallStars": 5 }
-```
+**Auto-Deploy:** Push auf `main` — also auf einem Feature-Branch arbeiten und erst nach grüner lokaler Prüfung mergen. Rückweg: `git revert <merge-commit>` + Push.
 
 ---
 
 ## Kosten
 
-~$0.001 pro Generierung (Claude Haiku 4.5). Geschätzt < $1/Monat bei 100 Reviews.
+~$0,005 pro Generierung (Claude Sonnet 5, ~700 Input-Token + max. 400 Output). Bei 100 Reviews/Monat unter $1.
