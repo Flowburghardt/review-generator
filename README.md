@@ -1,5 +1,25 @@
 # Review Generator — quality.burghardt.studio
 
+> ## ⭐ Dies ist das Haupt-Repo
+>
+> **Für jedes neue Kundenprojekt dieser Art wird DIESES Repo verwendet** — nicht `Flowburghardt/wytspace-review-generator`.
+>
+> Es gibt zwei Repos, und sie sind weder Fork noch Branch voneinander, sondern zwei unabhängige Kopien:
+>
+> | | `review-generator` (hier) | `wytspace-review-generator` |
+> |---|---|---|
+> | Erstellt | 28.03.2026, 04:48 | 28.03.2026, 13:55 |
+> | Live auf | quality.burghardt.studio | feedback.wytspace.studio · fblagerboxxen.w-y-t.space |
+> | Kunden-Configs | `burghardt-studio` | `lagerboxxen`, `wytspace-studio` |
+> | Stand | **aktuell** — Fakten-Chips, 5 Stile, Sonnet 5 | **veraltet** — Sterne, Adjektiv-Tags, Haiku 4.5 |
+> | Letzter Push | laufend | 29.03.2026 |
+>
+> Der wytspace-Ableger entstand neun Stunden nach diesem Repo als Kopie und ist seit März unverändert. Er läuft weiter für seine zwei Kunden, hat aber die alte Sterne-Logik samt des Adjektiv-Problems, das hier behoben wurde.
+>
+> **Bei „bau dem Kunden X so ein Google-Bewertungs-Tool":** dieses Repo klonen, eine neue Client-Config anlegen (siehe „Multi-Tenant"), Logo ablegen, Import ergänzen, deployen. Nicht das wytspace-Repo als Vorlage nehmen.
+>
+> Wird der Ableger irgendwann angefasst, ist der saubere Weg, seine zwei Configs hierher zu ziehen und ihn stillzulegen — solange das nicht passiert ist, existieren zwei Codebasen mit demselben Zweck.
+
 Hilft Kunden dabei, eine Google-Bewertung zu schreiben, die nach ihnen klingt. Der Kunde klickt an, **was tatsächlich passiert ist**, die KI baut daraus einen Text zum Kopieren, danach geht es direkt zum Google-Bewertungsfenster.
 
 **Stack:** Next.js 15 · React 19 · TypeScript · Tailwind CSS v4 · Framer Motion · Anthropic SDK (Claude Sonnet 5)
@@ -162,9 +182,27 @@ Docker Multi-Stage Build auf Coolify (VPS Aurora, `w-y-t.space`).
 - `ANTHROPIC_API_KEY=sk-ant-...`
 
 **Domain:** `quality.burghardt.studio`
+**App-UUID:** `s40g4owg8oc80wksowwkcsss` (Coolify-Instanz Aurora)
 **DNS:** A-Record → `62.169.30.171`
 **SSL:** Automatisch via Traefik
-**Auto-Deploy:** Push auf `main` — also auf einem Feature-Branch arbeiten und erst nach grüner lokaler Prüfung mergen. Rückweg: `git revert <merge-commit>` + Push.
+
+> **Kein Auto-Deploy.** Die Git-Source steht auf „Public GitHub" ohne GitHub-App-Integration (`source_id: 0`) — es existiert kein Webhook, der auf Pushes hört. Ein Push nach `main` allein ändert live **nichts**; das wurde am 21.08.2026 verifiziert (Push durch, sechs Minuten später weiterhin die alte Version, `list_deployments` leer).
+
+Deploy manuell auslösen:
+
+```
+coolify deploy s40g4owg8oc80wksowwkcsss     # via MCP: mcp__coolify-mcp__deploy
+```
+
+Dauer rund 4–5 Minuten (gemessen: 270 s). Danach mit Cache-Buster gegenprüfen, nicht dem Status glauben:
+
+```bash
+curl -s "https://quality.burghardt.studio/?cb=$(date +%s)" | grep "Erstell dir in einer halben Minute"
+```
+
+Trotzdem auf einem Feature-Branch arbeiten und erst nach grünen Gates mergen — der Rückweg ist `git revert -m 1 <merge-commit>` plus erneuter manueller Deploy.
+
+**Zu „45 unapplied configuration changes" im Coolify-UI:** Kein Handlungsbedarf und kein Update-Bedarf. Coolify v4.1.0 hat Config-Diff-Tracking eingeführt (#10183); der Hinweis zeigt erstmals die Lücke zwischen gespeicherter Config und dem, was beim letzten Deploy davor tatsächlich lief. Ein Deploy wendet sie an.
 
 ---
 

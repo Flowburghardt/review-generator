@@ -1,5 +1,9 @@
 # CLAUDE.md — Review Generator
 
+> **Dies ist das Haupt-Repo für Google-Bewertungs-Tools.** Bei „bau dem Kunden so ein Bewertungs-Tool" wird DIESES Repo verwendet, nicht `Flowburghardt/wytspace-review-generator`. Der Ableger ist eine unabhängige Kopie vom 28.03.2026 (neun Stunden nach diesem Repo), läuft für `feedback.wytspace.studio` und `fblagerboxxen.w-y-t.space` und steht noch auf der alten Sterne-Logik. Details in der README.
+
+> **Kein Auto-Deploy.** Git-Source ist „Public GitHub" ohne GitHub-App, es gibt keinen Webhook. Ein Push nach `main` ändert live nichts — der Deploy wird manuell ausgelöst (App-UUID `s40g4owg8oc80wksowwkcsss`, Coolify/Aurora) und dauert ~270 s. Danach mit Cache-Buster gegenprüfen.
+
 ## Commands
 
 ```bash
