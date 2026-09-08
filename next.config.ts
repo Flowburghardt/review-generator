@@ -21,6 +21,28 @@ const nextConfig: NextConfig = {
         },
       ],
     },
+    // Security-Header fuer alle Routen (Vorlage: atemweg-art-v2/next.config.ts)
+    {
+      source: "/(.*)",
+      headers: [
+        {
+          key: "Strict-Transport-Security",
+          value: "max-age=31536000; includeSubDomains",
+        },
+        {
+          key: "X-Frame-Options",
+          value: "SAMEORIGIN",
+        },
+        {
+          key: "X-Content-Type-Options",
+          value: "nosniff",
+        },
+        {
+          key: "Referrer-Policy",
+          value: "strict-origin-when-cross-origin",
+        },
+      ],
+    },
   ],
 };
 
