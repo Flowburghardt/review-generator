@@ -13,6 +13,7 @@ interface ReviewOutputProps {
   isGenerating: boolean;
   /** Die eigene Notiz wurde verworfen — das gehört gesagt, nicht verschwiegen. */
   noteDropped?: boolean;
+  perspektive?: "ich" | "wir";
 }
 
 export default function ReviewOutput({
@@ -22,6 +23,7 @@ export default function ReviewOutput({
   canRegenerate,
   isGenerating,
   noteDropped,
+  perspektive = "wir",
 }: ReviewOutputProps) {
   const [copied, setCopied] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
@@ -73,7 +75,7 @@ export default function ReviewOutput({
 
       {noteDropped && (
         <p className="rounded-xl bg-tag-negative px-4 py-3 text-sm text-text">
-          Deine eigene Notiz konnten wir nicht verwenden — sie enthielt etwas,
+          Deine eigene Notiz konnte{perspektive === "ich" ? " ich" : "n wir"} nicht verwenden — sie enthielt etwas,
           das wie eine Anweisung aussah. Der Text unten kommt nur aus deiner
           Auswahl.
         </p>

@@ -28,6 +28,13 @@ export interface ClientConfig {
   negativeChips: string[];
   aiContext: string;
   feedbackEmail?: string;
+  /**
+   * Wer in den festen Oberflächentexten spricht: "ich" für Einzelunternehmer,
+   * "wir" für Teams. Fehlt das Feld, gilt "wir". burghardt.studio steht auf
+   * "ich" (Markenkarte: nie „Wir", Florian arbeitet allein). Sätze in der
+   * Stimme der Kundin (Chips, Platzhalter) sind davon nicht betroffen.
+   */
+  perspektive?: "ich" | "wir";
 }
 
 export interface GenerateRequest {

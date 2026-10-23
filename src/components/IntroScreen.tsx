@@ -9,12 +9,15 @@ interface IntroScreenProps {
   businessName: string;
   welcomeText: string;
   logoUrl?: string;
+  perspektive?: "ich" | "wir";
   onStart: () => void;
 }
 
-const STEPS = [
+const steps = (perspektive: "ich" | "wir") => [
   "Du klickst an, worum es ging und was zutrifft.",
-  "Wir schreiben dir daraus einen fertigen Text.",
+  perspektive === "ich"
+    ? "Ich schreibe dir daraus einen fertigen Text."
+    : "Wir schreiben dir daraus einen fertigen Text.",
   "Text kopieren, bei Google einfügen — fertig.",
 ];
 
@@ -22,6 +25,7 @@ export default function IntroScreen({
   businessName,
   welcomeText,
   logoUrl,
+  perspektive = "wir",
   onStart,
 }: IntroScreenProps) {
   return (
@@ -49,7 +53,7 @@ export default function IntroScreen({
       </div>
 
       <ol className="flex flex-col gap-3">
-        {STEPS.map((step, i) => (
+        {steps(perspektive).map((step, i) => (
           <motion.li
             key={step}
             initial={{ opacity: 0, x: -8 }}

@@ -258,6 +258,7 @@ export default function ReviewFlow({ config }: ReviewFlowProps) {
               businessName={config.businessName}
               welcomeText={config.welcomeText}
               logoUrl={config.branding.logoUrl}
+              perspektive={config.perspektive}
               onStart={() => setStep(STEP_WHAT)}
             />
           </motion.div>
@@ -331,7 +332,7 @@ export default function ReviewFlow({ config }: ReviewFlowProps) {
                 Fertig zum Schreiben
               </h2>
               <p className="mt-1 text-sm text-text-muted">
-                Wir bauen dir daraus einen Text. Du kannst ihn danach noch ändern.
+                {config.perspektive === "ich" ? "Ich baue" : "Wir bauen"} dir daraus einen Text. Du kannst ihn danach noch ändern.
               </p>
             </div>
             <GenerateButton
@@ -366,6 +367,7 @@ export default function ReviewFlow({ config }: ReviewFlowProps) {
               canRegenerate={generateCount < MAX_GENERATIONS}
               isGenerating={isGenerating}
               noteDropped={noteDropped}
+              perspektive={config.perspektive}
             />
           </motion.div>
         )}
